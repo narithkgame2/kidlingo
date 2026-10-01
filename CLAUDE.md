@@ -25,6 +25,7 @@ and stops the engine itself. Kokoro (`--engine kokoro`) remains as a fallback.
 | `src/data.js` | All content: `THEMES`, `PHRASES` (optional scene `sc`), `EN`, `TALK`, kana tables + `STROKES`, `romaji()`, `SPOKEN_EXTRA`, `JOURNEY`, `rowChars()` |
 | `src/app.js` | Storage, audio, rewards, journey, screens, games, recording, parent mode |
 | `web/` | `sw.js` (offline), `manifest.webmanifest`, `icons/` (icon-180/192/512: a red はなまる around あ) |
+| `docs/audio/` | One small .m4a per clip (named by content hash), written by the build; the page only carries the list |
 | `audio/clips.json` | `{ "japanese text": base64 AAC (.m4a) }`, inlined into the build; `clips.meta.json` = engine id |
 | `scripts/texts.py` | Every speakable text from `data.js` (source of truth for audio) |
 | `docs/` | Built site that GitHub Pages serves (index.html, sw.js, manifest, icons, .nojekyll) |
@@ -48,17 +49,23 @@ and stops the engine itself. Kokoro (`--engine kokoro`) remains as a fallback.
   いってらっしゃい, ただいま, おかえり, ありがとう, どういたしまして, どうぞ, ごめんなさい, いいよ).
 - **Stars**: lessons from first tries (`tally`; ≥85% 3, ≥50% 2, else 1); kana rows from failed checks (0 = 3, ≤2 = 2).
   Best kept. Stops finished before stars existed show 3.
-- **Tracing**: masu square canvas, faded Klee One glyph, coverage ≥ 0.7 and precision ≥ 0.78 at 72px. Shows stroke
-  count, not stroke order. In a journey row (`RS`) the row's kana are shown on top and traced in turn.
+- **Writing a kana** (`trace`, Nick 2026-10-01: "correct way of writing with feedback, and 2-3 words below"): an SVG masu
+  (rounded border inside the viewBox, never clipped) with KanjiVG strokes (`src/strokes.js`, `STROKE_D`, viewBox 109,
+  CC BY-SA 3.0, credited in parent mode). First time: strokes animate in order, numbered, coach "かきじゅんを みましょう".
+  Then stroke by stroke: green start dot + arrow; each drawn stroke is resampled (24 points) and compared with the
+  expected one (`OK_DIST` .16 of the box): right → it snaps into ink; backwards → "むきが ちがいます"; a later stroke →
+  "じゅんばんが ちがいます"; else "もう いちど かきましょう", and the correct stroke replays. Done after the last stroke
+  (hanko, はなまる). Under the box: `KANA_WORDS` (2-3 words per kana, kana highlighted, tap to hear; ヲ has none).
+  In a journey row (`RS`) mistakes count against the stars.
 - **Rewards**: はなまる count, daily streak (にち), hanko stamp, stickers (topics, regions, kana milestones, はなまる, streaks).
 - **Mastery**: a word/phrase is learned after ≥3 correct with the last 2 in a row; answers after the hint don't count.
 - **State**: `localStorage` key `kidlingo.v1`: `{hana, days[], words{}, kana{}, themes{}, stickers{}, stars{},
   settings{kana, rate, sfx}}`. Additive keys only; no renames without a migration. Parent mode has **Save / Load
   progress file** (`app:'kidlingo'`; share sheet on iPhone/iPad) to move progress between devices.
-- **Offline**: `sw.js` (network-first page with a saved copy, Google Fonts cached on first load, only `kidlingo-`
-  caches). Registered only on http(s).
-
-## Design decisions (keep unless Nick changes them)
+- **Offline**: `sw.js` keeps the page (network first) and saves every voice clip in the background after the first
+  visit (`save-clips` message from the app; clips no longer used are removed; Safari range requests get 206 replies);
+  Google Fonts cached on first load; only `kidlingo-` caches. Parent mode shows "Ready offline". The web page is
+  ~160 KB; `dist/kidlingo.html` (single file, opened from disk) carries the clips inline instead.
 - **Child view is Japanese + pictures only.** No romaji where the child looks. English meaning only behind **?** on
   learn cards, never in games. Parent mode has English + romaji, progress, talk-together lines, settings, backup.
 - Cultural rewards: はなまる, hanko, masu squares, and the e-sugoroku journey (the traditional Japanese picture board

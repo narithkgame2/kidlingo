@@ -74,7 +74,7 @@ function playClips(parts, r){
   const step = () => {
     if(tok !== qTok || i >= parts.length) return;
     const t = parts[i++];
-    player.src = 'data:audio/mp4;base64,' + CLIPS[t];
+    player.src = CLIPS[t];        // a file URL (web app) or a data: URL (single-file copy)
     player.defaultPlaybackRate = player.playbackRate = rateFor(r);
     player.muted = false; player.volume = 1;
     player.onended = () => setTimeout(step, GAP);
@@ -91,12 +91,10 @@ function webAudioClips(parts, r, tok){
     let i = 0;
     const step = () => {
       if(tok !== qTok || i >= parts.length) return;
-      const bin = atob(CLIPS[parts[i++]]), buf = new Uint8Array(bin.length);
-      for(let j=0;j<bin.length;j++) buf[j] = bin.charCodeAt(j);
-      ac.decodeAudioData(buf.buffer, ab => {
+      fetch(CLIPS[parts[i++]]).then(r => r.arrayBuffer()).then(buf => ac.decodeAudioData(buf, ab => {
         const src = ac.createBufferSource(); src.buffer = ab; src.playbackRate.value = rateFor(r);
         src.connect(ac.destination); src.onended = () => setTimeout(step, GAP); src.start(); clearSoundIssue();
-      }, e => soundIssue('decode: ' + (e && e.message || e)));
+      }, e => soundIssue('decode: ' + (e && e.message || e)))).catch(e => soundIssue('fetch: ' + (e && e.message || e)));
     };
     step();
   }catch(e){ soundIssue('webaudio: ' + (e && e.message || e)); }
@@ -512,81 +510,124 @@ let RS = null;
 function startRow(id){ RS = {id, chars:rowChars(id), j:0, fails:0, earned:0, was:stopDone(id)}; go('trace', RS.chars[0]); }
 function finishRow(){ const r = RS; RS = null; current = 'done';
   finishScreen(r.id, r.fails === 0 ? 3 : r.fails <= 2 ? 2 : 1, r.earned, r.was, () => startRow(r.id)); }
-async function trace(k){
+/* ---------- writing a kana: watch, then write stroke by stroke ----------
+   The correct strokes come from KanjiVG (STROKE_D, viewBox 0 0 109 109). First time: the strokes animate in order,
+   numbered, while the coach says "かきじゅんを みましょう". Then the child writes one stroke at a time: a green start
+   dot and arrow show the next stroke. Each stroke is compared with the expected one (shape, start, direction, order):
+   right → it snaps into clean ink; drawn backwards → "むきが ちがいます"; a later stroke first → "じゅんばんが
+   ちがいます"; otherwise "もう いちど かきましょう". After a mistake the correct stroke replays. Under the box:
+   2-3 example words with the kana highlighted (tap to hear). */
+const KV = 109, PAD = 4;                         // KanjiVG units; the masu box adds a margin so its border is never cut
+const NPTS = 24, OK_DIST = .16;                  // points compared per stroke; accepted mean distance (share of the box)
+function resample(pts, n = NPTS){
+  if(pts.length < 2) return Array(n).fill(pts[0] || [0, 0]);
+  const L = [0]; for(let i = 1; i < pts.length; i++) L.push(L[i-1] + Math.hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1]));
+  const tot = L[L.length-1] || 1, out = []; let j = 0;
+  for(let i = 0; i < n; i++){ const t = tot * i / (n-1); while(j < L.length-2 && L[j+1] < t) j++;
+    const seg = (L[j+1] - L[j]) || 1, f = Math.min(1, Math.max(0, (t - L[j]) / seg));
+    out.push([pts[j][0] + (pts[j+1][0]-pts[j][0])*f, pts[j][1] + (pts[j+1][1]-pts[j][1])*f]); }
+  return out; }
+const meanDist = (a, b) => a.reduce((s, p, i) => s + Math.hypot(p[0]-b[i][0], p[1]-b[i][1]), 0) / a.length;
+const kwHTML = (w, k) => esc(w).split(k).join(`<b>${k}</b>`);
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function trace(k){
   markDay();
   if(RS && RS.chars[RS.j] !== k) RS = null;
   const LIST = KATA.includes(k) ? KATA : KANA; script = LIST === KATA ? 'kata' : 'hira';
-  const idx = LIST.indexOf(k), n = STROKES[k] || 1;
+  const idx = LIST.indexOf(k), D = STROKE_D[k] || [], n = D.length || STROKES[k] || 1, words = KANA_WORDS[k] || [];
+  const firstTime = !S.kana[k];
   h(`${RS ? `<div class="row-dots" aria-label="${RS.j+1} / ${RS.chars.length}">${RS.chars.map((c,i) => `<span class="kana${i < RS.j ? ' done' : i === RS.j ? ' now' : ''}">${c}</span>`).join('')}</div>` : ''}
     <div class="trace-top"><button class="icon-btn" id="tp" aria-label="まえ" ${idx===0||RS?'disabled':''}>◀</button><span class="prompt-text">なぞって かきましょう</span><button class="icon-btn" id="tn" aria-label="つぎ" ${idx===LIST.length-1||RS?'disabled':''}>▶</button></div>
-    <div class="masu-wrap" id="mw"><canvas id="masu" aria-label="${k} を なぞる"></canvas><div class="tstamp" id="tstamp" hidden>${hanko()}</div></div>
+    <div class="masu-wrap" id="mw">
+      <svg class="masu" id="msvg" viewBox="${-PAD} ${-PAD} ${KV+2*PAD} ${KV+2*PAD}" role="img" aria-label="${k}">
+        <rect class="mbox" x="${-PAD/2}" y="${-PAD/2}" width="${KV+PAD}" height="${KV+PAD}" rx="7"/>
+        <path class="mguide" d="M${KV/2} ${-PAD/2}V${KV+PAD/2}M${-PAD/2} ${KV/2}H${KV+PAD/2}"/>
+        <g id="gfaint">${D.map(d => `<path class="sg" d="${d}"/>`).join('')}</g>
+        <g id="gink"></g><g id="gflash"></g><g id="ghint"></g></svg>
+      <canvas id="masu" aria-hidden="true"></canvas>
+      <div class="tstamp" id="tstamp" hidden>${hanko()}</div></div>
     <div class="stroke-row" id="srow"><span class="kana">${n}</span><span>かいで かきましょう</span><span class="sdots" id="sdots">${'<i></i>'.repeat(n)}</span></div>
+    ${words.length ? `<div class="kwords">${words.map(([w,e]) => `<button class="kw" data-w="${esc(w)}"><span class="emo">${e}</span><span class="kana">${kwHTML(w, k)}</span></button>`).join('')}</div>` : ''}
     ${PAIR[k] ? `<p class="pair">ひらがな <button class="pair-chip kana" id="pairBtn">${PAIR[k]}</button> と おなじ おとです</p>` : ''}
-    <div class="nav-row"><button class="btn round" id="tsay" aria-label="きく">${SPK}</button><button class="btn" id="tclear">けします</button><button class="btn primary" id="tdone">できました</button></div>`);
+    <div class="nav-row tnav"><button class="btn round" id="tsay" aria-label="きく">${SPK}</button><button class="btn" id="twatch" aria-label="かきじゅんを みる">▶ かきじゅん</button><button class="btn" id="tclear">けします</button><button class="btn primary" id="tnext" hidden>つぎ ▶</button></div>`);
   $('#tp').onclick = () => go('trace', LIST[idx-1]);
-  if(PAIR[k]) $('#pairBtn').onclick = () => say(PAIR[k]);
   $('#tn').onclick = () => go('trace', LIST[idx+1]);
-  say(!RS || RS.j === 0 ? ['なぞって かきましょう', k] : k);
+  if(PAIR[k]) $('#pairBtn').onclick = () => say(PAIR[k]);
+  view.querySelectorAll('.kw').forEach(b => b.onclick = () => { say(b.dataset.w); bump(b); });
+  $('#tsay').onclick = () => say(k);
 
-  const cv = $('#masu'), size = Math.floor($('#mw').getBoundingClientRect().width), dpr = devicePixelRatio || 1;
+  const svg = $('#msvg'), faint = [...svg.querySelectorAll('#gfaint path')], ink = $('#gink'), flash = $('#gflash'), hint = $('#ghint');
+  // the expected strokes as point lists (0..1 of the KanjiVG box)
+  const EXP = faint.map(p => { const L = p.getTotalLength(), pts = [];
+    for(let i = 0; i < NPTS; i++){ const q = p.getPointAtLength(L * i / (NPTS-1)); pts.push([q.x / KV, q.y / KV]); } return pts; });
+  let cur = 0, fails = 0, failsHere = 0, busy = false, done = false;
+
+  const showHint = () => { if(done || !EXP[cur]){ hint.innerHTML = ''; return; }
+    const a = EXP[cur][0], b = EXP[cur][Math.min(5, NPTS-1)], ang = Math.atan2(b[1]-a[1], b[0]-a[0]);
+    const x = a[0]*KV, y = a[1]*KV, ax = x + Math.cos(ang)*13, ay = y + Math.sin(ang)*13;
+    hint.innerHTML = `<path class="harrow" d="M${x} ${y}L${ax} ${ay}"/><path class="harrowh" d="M${ax} ${ay}l${Math.cos(ang+2.5)*5} ${Math.sin(ang+2.5)*5}M${ax} ${ay}l${Math.cos(ang-2.5)*5} ${Math.sin(ang-2.5)*5}"/>
+      <circle class="hdot" cx="${x}" cy="${y}" r="5.5"/><text class="hnum" x="${x}" y="${y+2.6}">${cur+1}</text>`; };
+  const dots = () => [...$('#sdots').children].forEach((el, i) => el.classList.toggle('on', i < cur));
+  const drawStroke = (layer, i, cls, ms) => new Promise(res => {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', D[i]); p.setAttribute('class', cls); layer.appendChild(p);
+    const L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = reduce ? 0 : L;
+    if(reduce || !ms) { p.style.strokeDashoffset = 0; return res(p); }
+    const an = p.animate([{strokeDashoffset:L},{strokeDashoffset:0}], {duration:ms, easing:'ease-in-out', fill:'forwards'}); an.onfinish = () => res(p); });
+  const watch = async () => { if(busy) return; busy = true; hint.innerHTML = ''; flash.innerHTML = '';
+    for(let i = 0; i < D.length; i++){ if(!svg.isConnected) return;
+      const p = await drawStroke(flash, i, 'sanim', 520 + i*0);
+      const s0 = EXP[i][0]; flash.insertAdjacentHTML('beforeend', `<circle class="anum-bg" cx="${s0[0]*KV}" cy="${s0[1]*KV}" r="5"/><text class="anum" x="${s0[0]*KV}" y="${s0[1]*KV+2.4}">${i+1}</text>`);
+      await new Promise(r => setTimeout(r, 160)); }
+    await new Promise(r => setTimeout(r, 650)); if(!svg.isConnected) return;
+    flash.innerHTML = ''; busy = false; showHint(); };
+  const replayOne = async i => { flash.innerHTML = ''; await drawStroke(flash, i, 'sflash', 600); setTimeout(() => { if(flash.isConnected) flash.innerHTML = ''; }, 700); };
+
+  // drawing on the overlay canvas
+  const cv = $('#masu'), wrap = $('#mw'), size = Math.floor(wrap.getBoundingClientRect().width), dpr = devicePixelRatio || 1;
   cv.width = size*dpr; cv.height = size*dpr; cv.style.width = cv.style.height = size + 'px';
   const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
-  try{ await document.fonts.load(`600 ${Math.round(size*.78)}px "Klee One"`, k); }catch(e){}
-  if(!cv.isConnected) return;
+  const unit = size / (KV + 2*PAD);                                   // pixels per KanjiVG unit
+  const toK = e => { const r = cv.getBoundingClientRect(); return [((e.clientX-r.left)/r.width*(KV+2*PAD) - PAD) / KV, ((e.clientY-r.top)/r.height*(KV+2*PAD) - PAD) / KV]; };
+  let line = null;
+  const paintLine = () => { ctx.clearRect(0,0,size,size); if(!line || line.length < 1) return;
+    ctx.strokeStyle = '#1E2A45'; ctx.lineWidth = 6.5*unit; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); line.forEach((p, i) => { const x = (p[0]*KV + PAD)*unit, y = (p[1]*KV + PAD)*unit; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); };
+  cv.onpointerdown = e => { if(done || busy) return; e.preventDefault(); try{ cv.setPointerCapture(e.pointerId); }catch(_){} line = [toK(e)]; paintLine(); };
+  cv.onpointermove = e => { if(!line) return; line.push(toK(e)); paintLine(); };
+  cv.onpointerup = cv.onpointercancel = () => { if(!line) return; const pts = line; line = null; judge(pts); };
 
-  const glyph = (c, s, color, sw) => {
-    c.font = `600 ${s*.78}px "Klee One", "Hiragino Mincho ProN", serif`; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-    const m = c.measureText(k), asc = m.actualBoundingBoxAscent || s*.39, desc = m.actualBoundingBoxDescent || s*.05;
-    const x = s/2 + ((m.actualBoundingBoxLeft||0) - (m.actualBoundingBoxRight||0))/2, y = s/2 + (asc - desc)/2;
-    c.fillStyle = color; c.fillText(k, x, y);
-    if(sw){ c.lineWidth = sw; c.lineJoin = 'round'; c.strokeStyle = color; c.strokeText(k, x, y); }
+  const judge = pts => {
+    const len = pts.reduce((s, p, i) => i ? s + Math.hypot(p[0]-pts[i-1][0], p[1]-pts[i-1][1]) : 0, 0);
+    if(len < .03){ ctx.clearRect(0,0,size,size); return; }            // a tap, not a stroke
+    const u = resample(pts), dF = j => meanDist(u, EXP[j]), dR = j => meanDist(u, [...EXP[j]].reverse());
+    const here = dF(cur);
+    ctx.clearRect(0,0,size,size);
+    if(here <= OK_DIST){
+      drawStroke(ink, cur, 'sink', 160); cur++; failsHere = 0; dots(); sfx.tap();
+      if(cur >= D.length) return finished();
+      showHint(); return; }
+    fails++; failsHere++; if(RS) RS.fails++;
+    let msg = 'もう いちど かきましょう';
+    if(dR(cur) <= OK_DIST) msg = 'むきが ちがいます';
+    else if(EXP.some((_, j) => j > cur && dF(j) <= OK_DIST)) msg = 'じゅんばんが ちがいます';
+    sfx.no(); shake(wrap); say(msg); replayOne(cur);
   };
-  let strokes = [], cur = null, passed = false;
-  const paint = (c, s, lw, color) => { c.strokeStyle = color; c.fillStyle = color; c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round';
-    strokes.forEach(st => { if(st.length === 1){ c.beginPath(); c.arc(st[0][0]*s, st[0][1]*s, lw/2, 0, Math.PI*2); c.fill(); return; }
-      c.beginPath(); c.moveTo(st[0][0]*s, st[0][1]*s); st.forEach(p => c.lineTo(p[0]*s, p[1]*s)); c.stroke(); }); };
-  const redraw = () => {
-    ctx.clearRect(0,0,size,size); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,size,size);
-    ctx.strokeStyle = '#D6E1EE'; ctx.lineWidth = 2; ctx.setLineDash([8,8]);
-    ctx.beginPath(); ctx.moveTo(size/2,0); ctx.lineTo(size/2,size); ctx.moveTo(0,size/2); ctx.lineTo(size,size/2); ctx.stroke(); ctx.setLineDash([]);
-    ctx.strokeStyle = '#B9C8DA'; ctx.lineWidth = 4; ctx.strokeRect(2,2,size-4,size-4);
-    glyph(ctx, size, '#C9D6E6');
-    paint(ctx, size, size*.065, '#1E2A45');
+  const finished = () => {
+    done = true; hint.innerHTML = '';
+    const first = !S.kana[k]; S.kana[k] = (S.kana[k]||0) + 1; save();
+    $('#tstamp').hidden = false; sfx.win(); say('よく できました！'); confetti(); addHana(first ? 2 : 1); if(RS) RS.earned += first ? 2 : 1;
+    const b = $('#tnext'); b.hidden = false; $('#tclear').hidden = true;
+    if(RS){ const last = RS.j >= RS.chars.length-1; b.textContent = last ? 'できました！' : 'つぎ ▶';
+      b.onclick = () => { if(last) return finishRow(); RS.j++; go('trace', RS.chars[RS.j]); }; }
+    else { b.textContent = idx < LIST.length-1 ? 'つぎ ▶' : 'おわり';
+      b.onclick = () => idx < LIST.length-1 ? go('trace', LIST[idx+1]) : go('kana'); }
   };
-  const dots = () => { const d = [...$('#sdots').children]; d.forEach((el,i) => el.classList.toggle('on', i < strokes.length)); $('#srow').classList.toggle('over', strokes.length > n); };
-  redraw();
-  const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height]; };
-  cv.onpointerdown = e => { if(passed) return; e.preventDefault(); try{ cv.setPointerCapture(e.pointerId); }catch(_){} cur = [pt(e)]; strokes.push(cur); redraw(); dots(); };
-  cv.onpointermove = e => { if(!cur) return; cur.push(pt(e)); redraw(); };
-  cv.onpointerup = cv.onpointercancel = () => { cur = null; };
+  $('#tclear').onclick = () => { ink.innerHTML = ''; flash.innerHTML = ''; cur = 0; failsHere = 0; done = false; ctx.clearRect(0,0,size,size); dots(); showHint(); };
+  $('#twatch').onclick = () => { say('かきじゅんを みましょう'); ink.innerHTML = ''; cur = 0; dots(); watch(); };
 
-  const check = () => {
-    const N = 72, mk = () => { const c = document.createElement('canvas'); c.width = c.height = N; return c.getContext('2d', {willReadFrequently:true}); };
-    const g = mk(), z = mk(), thick = mk(), thin = mk();
-    glyph(g, N, '#000'); glyph(z, N, '#000', N*.1);
-    paint(thick, N, N*.14, '#000'); paint(thin, N, N*.05, '#000');
-    const A = c => c.getImageData(0,0,N,N).data, gd = A(g), zd = A(z), td = A(thick), ud = A(thin);
-    let gc=0, cov=0, uc=0, inz=0;
-    for(let i=3;i<gd.length;i+=4){ if(gd[i] > 100){ gc++; if(td[i] > 60) cov++; } if(ud[i] > 100){ uc++; if(zd[i] > 60) inz++; } }
-    return {coverage: gc ? cov/gc : 0, precision: uc ? inz/uc : 0};
-  };
-  $('#tsay').onclick = () => say(k);
-  $('#tclear').onclick = () => { strokes = []; passed = false; $('#tstamp').hidden = true; resetDone(); redraw(); dots(); };
-  const resetDone = () => { const b = $('#tdone'); b.textContent = 'できました'; b.onclick = done; };
-  const done = () => {
-    if(!strokes.length){ say('なぞって かきましょう'); shake(cv); return; }
-    const r = check();
-    if(r.coverage >= .7 && r.precision >= .78){
-      passed = true; const first = !S.kana[k]; S.kana[k] = (S.kana[k]||0) + 1; save();
-      $('#tstamp').hidden = false; sfx.win(); say('よく できました'); confetti(); addHana(first ? 2 : 1); if(RS) RS.earned += first ? 2 : 1;
-      const b = $('#tdone');
-      if(RS){ const last = RS.j >= RS.chars.length-1; b.textContent = last ? 'できました！' : 'つぎ ▶';
-        b.onclick = () => { if(last) return finishRow(); RS.j++; go('trace', RS.chars[RS.j]); }; }
-      else { b.textContent = idx < LIST.length-1 ? 'つぎ ▶' : 'おわり';
-        b.onclick = () => idx < LIST.length-1 ? go('trace', LIST[idx+1]) : go('kana'); }
-    } else { if(RS) RS.fails++; sfx.no(); shake(cv); say(r.coverage < .7 ? 'もう すこしです！' : 'せんの うえを なぞって ください'); }
-  };
-  resetDone();
+  if(firstTime && D.length){ say(!RS || RS.j === 0 ? ['かきじゅんを みましょう', k] : [k]); setTimeout(() => { if(svg.isConnected) watch(); }, reduce ? 0 : 900); }
+  else { say(!RS || RS.j === 0 ? ['なぞって かきましょう', k] : k); showHint(); }
 }
 
 function stickers(){
@@ -678,6 +719,8 @@ function parent(){
     <div class="set"><label for="setSfx">Sound effects</label><input type="checkbox" id="setSfx" ${S.settings.sfx?'checked':''}></div>
     <div class="set"><span>Voice: recorded Japanese audio, __VOICE_CREDIT__. Anything without a recording uses the device voice.</span><button class="small-btn" id="testV">Test voice</button></div>
     <div class="set"><span>Progress file: move progress to another device, or keep a copy</span><span class="bk"><button class="small-btn" id="bkSave">Save</button><label class="small-btn">Load<input type="file" id="bkLoad" accept=".json,application/json" hidden></label></span></div>
+    <div class="set"><span id="offRow">${offlineText()}</span></div>
+    <div class="set"><span>Stroke order: KanjiVG (kanjivg.tagaini.net), © Ulrich Apel, CC BY-SA 3.0.</span></div>
     <div class="set"><span>Reset all progress</span><button class="small-btn danger" id="reset">Reset</button></div>
   </div>`);
   view.querySelectorAll('[data-say]').forEach(b => b.onclick = () => say(b.dataset.say));
@@ -711,4 +754,12 @@ view.addEventListener('input', e => { if(!e.target.classList.contains('spd')) re
 $('#soundWarn').onclick = soundHelp;
 go('home');
 /* offline: sw.js keeps a copy of the app (and its fonts) on the device after the first visit */
-if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
+let OFFLINE = {done:0, total:0, on:false};
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  navigator.serviceWorker.addEventListener('message', e => { if(e.data && e.data.type === 'clips'){ OFFLINE = {...OFFLINE, ...e.data}; const el = $('#offRow'); if(el) el.textContent = offlineText(); } });
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => { OFFLINE.on = true;
+    const urls = [...new Set(Object.values(CLIPS).filter(u => !u.startsWith('data:')))]; OFFLINE.total = urls.length;
+    if(reg.active && urls.length) reg.active.postMessage({type:'save-clips', urls}); }).catch(() => {});
+}
+function offlineText(){ const o = OFFLINE; if(!o.on) return 'Offline copy: not available in this browser.';
+  return o.total && o.done >= o.total ? `Ready offline · all ${o.total} voice clips saved on this device` : `Saving voice clips for offline… ${o.total ? Math.round(o.done / o.total * 100) : 0}%`; }

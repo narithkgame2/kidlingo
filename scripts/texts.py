@@ -12,6 +12,7 @@ FOOTER = """
   ALL.forEach(t => t.words.forEach(w => set.add(w.k)));
   KANA.forEach(k => set.add(k)); KATA.forEach(k => set.add(k));
   Object.values(TALK).forEach(a => a.forEach(([jp]) => set.add(jp)));
+  Object.values(KANA_WORDS).forEach(a => a.forEach(([w]) => set.add(w)));
   const model = new Set(set);
   SPOKEN_EXTRA.forEach(t => set.add(t));
   return JSON.stringify([...set].map(t => [t, model.has(t) ? 'model' : 'coach'])); })()"""

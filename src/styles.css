@@ -354,3 +354,29 @@ body.wide .bar{max-width:none}
 .spd::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;background:var(--card);border:4px solid var(--sky);box-shadow:0 3px 0 #28609F}
 .spd::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--card);border:4px solid var(--sky);box-shadow:0 3px 0 #28609F}
 .set .speedbar{margin:0}
+
+/* ---------- writing a kana (2026-10): an SVG masu, never clipped; strokes from KanjiVG ---------- */
+.masu-wrap{position:relative;width:min(100%,380px);aspect-ratio:1;margin:0 auto;border-radius:16px;background:#fff;box-shadow:0 5px 0 var(--line)}
+.masu{display:block;width:100%;height:100%}
+#masu{position:absolute;inset:0;display:block;touch-action:none;background:transparent;box-shadow:none;border-radius:16px}
+.masu .mbox{fill:#fff;stroke:#B9C8DA;stroke-width:1.6}
+.masu .mguide{fill:none;stroke:#D6E1EE;stroke-width:.8;stroke-dasharray:3 3}
+.masu path.sg{fill:none;stroke:#DCE5EF;stroke-width:7.5;stroke-linecap:round;stroke-linejoin:round}
+.masu path.sink{fill:none;stroke:var(--ink);stroke-width:6.5;stroke-linecap:round;stroke-linejoin:round}
+.masu path.sanim{fill:none;stroke:var(--sky);stroke-width:6.5;stroke-linecap:round;stroke-linejoin:round}
+.masu path.sflash{fill:none;stroke:var(--sky);stroke-width:6.5;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+.masu .hdot{fill:var(--leaf);stroke:#fff;stroke-width:1.4;animation:hpulse 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.masu .hnum,.masu .anum{fill:#fff;font:700 6.5px var(--font);text-anchor:middle}
+.masu .anum-bg{fill:var(--sky)}
+.masu .harrow,.masu .harrowh{fill:none;stroke:var(--leaf);stroke-width:2.2;stroke-linecap:round}
+@keyframes hpulse{50%{transform:scale(1.25)}}
+.tstamp{position:absolute;right:4%;bottom:4%;width:40%;pointer-events:none;mix-blend-mode:multiply}
+/* example words under the kana */
+.kwords{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:14px}
+.kw{display:flex;align-items:center;gap:8px;border:0;border-radius:18px;background:var(--card);box-shadow:0 4px 0 var(--line);padding:6px 14px 6px 8px;cursor:pointer;font-size:clamp(20px,5.4vw,26px)}
+.kw .emo{font-size:1.5em}
+.kw b{color:var(--shu);font-weight:600}
+.kw:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.tnav{flex-wrap:nowrap;gap:8px}
+.tnav .btn{font-size:clamp(16px,4.4vw,20px);padding:10px clamp(10px,3vw,18px);white-space:nowrap}
+.tnav .btn.round{flex:none}
