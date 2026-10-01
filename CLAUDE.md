@@ -81,10 +81,11 @@ and stops the engine itself. Kokoro (`--engine kokoro`) remains as a fallback.
   accent notation (いってきます). `generate_audio.py --check` must show only intended differences (象 ゾオ/ゾウ, 八 fixes は).
   Some kanji misread (黄色→オウショク, 何色→ナンショク, 何ですか→ナニ, 空きました→アキ, なぞって書き→ガキ): keep those in kana.
   Coach: speed 0.92, intonation 1.08; model: speed 0.86, intonation 1.0 (natural); AAC 64 kbps.
-- **Speed 🐢/🐇** (Nick, 2026-10-01: "too fast; kids need correct pronunciation", like his original version): every model
-  line also has a real slow take, `slow:<text>` (VOICEVOX speed 0.6, pauses ×1.8, about 40% slower). The top-bar
-  🐢/🐇 button and the parent "Slow voice" checkbox set `S.settings.slow`; `clipKey()` picks the take. Clips always play at
-  1× (`rateFor` = 1): browser time-stretching sounds robotic. Coach lines have one speed. The page is ~8.7 MB (cached).
+- **Speed bar 🐢 ━━●━━ 🐇** (Nick, 2026-10-01: "too fast; kids need correct pronunciation… just a bar from slow to
+  fast, simple"): three stops in `S.settings.speed` (0 / 1 / 2) at the top of every lesson step (`speedBar()` inside
+  `stepsBar()`) and in parent mode. 0 = the real slow take `slow:<text>` (VOICEVOX speed 0.6, pauses ×1.8), 1 = normal,
+  2 = normal at 1.15×. Moving it replays the last word (`lastSaid`). Never slow clips in the browser (time-stretching
+  sounds robotic); a small speed-up is clean. Old `settings.slow` migrates to speed 0. The page is ~8.7 MB (cached).
 - Readings: check `/audio_query` kana when adding text. `READ_AS` fixes particle misreadings (は, へ alone; はち).
   Keep particles attached to their word (ほっかいどうに, not ほっかいどう に) or they get their own accent.
 - **Polite Japanese** (Nick, 2026-10-01): instructions, questions, phrases and talk lines use です/ます forms

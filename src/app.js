@@ -1,8 +1,8 @@
 /* ---------- storage ---------- */
 const KEY = 'kidlingo.v1';
-const DEF_SET = {kana:true, rate:0.85, sfx:true, slow:false};
+const DEF_SET = {kana:true, rate:0.85, sfx:true, speed:1};
 const fresh = () => ({hana:0, days:[], words:{}, kana:{}, themes:{}, stickers:{}, stars:{}, settings:{...DEF_SET}});
-function load(){ try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r) return Object.assign(fresh(), r, {settings:Object.assign({...DEF_SET}, r.settings||{})}); }catch(e){} return fresh(); }
+function load(){ try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r){ const st = Object.assign({...DEF_SET}, r.settings||{}); if(st.slow){ st.speed = 0; delete st.slow; } return Object.assign(fresh(), r, {settings:st}); } }catch(e){} return fresh(); }
 let S = load();
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
 
@@ -52,12 +52,15 @@ let CLIPS = {};
 try{ CLIPS = JSON.parse(document.getElementById('kl-audio').textContent); }catch(e){}
 const player = new Audio(); player.preload = 'auto';
 let qTok = 0;
-/* Speed: 🐢 plays the real slow take of each word and phrase ("slow:" clips, recorded slowly with longer pauses);
-   🐇 the normal one. Clips always play at 1×: slowing them in the browser time-stretches them and sounds robotic. */
-const rateFor = () => 1;
-const clipKey = t => S.settings.slow && CLIPS['slow:' + t] ? 'slow:' + t : t;
+/* Speed bar 🐢 ━━●━━ 🐇 (S.settings.speed 0 / 1 / 2): slow plays the real slow take of each word and phrase ("slow:"
+   clips, recorded slowly with longer pauses), normal the normal take, fast the normal take a little quicker.
+   Never slow a clip down in the browser: stretching it sounds robotic (speeding up a little is clean). */
+const rateFor = () => S.settings.speed === 2 ? 1.15 : 1;
+const clipKey = t => S.settings.speed === 0 && CLIPS['slow:' + t] ? 'slow:' + t : t;
+let lastSaid = null;
 function say(text, rate){
   const parts = [].concat(text), r = rate || S.settings.rate;
+  lastSaid = parts[parts.length - 1];
   if(parts.every(p => CLIPS[p])) return playClips(parts.map(clipKey), r);
   return ttsSay(parts, r);
 }
@@ -353,7 +356,8 @@ function lesson(id){
   markDay(); step();
 }
 const stepsBar = () => { const pct = Math.round(L.i / L.steps.length * 100);
-  return `<div class="rail" role="progressbar" aria-valuemin="1" aria-valuemax="${L.steps.length}" aria-valuenow="${L.i+1}"><span class="rail-track"><i style="width:${pct}%"></i></span><span class="rail-train" style="left:${pct}%" aria-hidden="true">🚃</span><span class="rail-flag" aria-hidden="true">🏁</span></div>`; };
+  return speedBar() + `<div class="rail" role="progressbar" aria-valuemin="1" aria-valuemax="${L.steps.length}" aria-valuenow="${L.i+1}"><span class="rail-track"><i style="width:${pct}%"></i></span><span class="rail-train" style="left:${pct}%" aria-hidden="true">🚃</span><span class="rail-flag" aria-hidden="true">🏁</span></div>`; };
+const speedBar = () => `<div class="speedbar"><span class="emo" aria-hidden="true">🐢</span><input type="range" class="spd" min="0" max="2" step="1" value="${S.settings.speed}" aria-label="こえの はやさ (ゆっくり … はやい)"><span class="emo" aria-hidden="true">🐇</span></div>`;
 const tally = ok => { if(!L) return; L.n++; if(ok) L.ok++; };
 const starsFor = (ok, n) => !n ? 3 : ok/n >= .85 ? 3 : ok/n >= .5 ? 2 : 1;
 function next(){ if(current !== 'lesson') return; L.i++; if(L.i >= L.steps.length) finish(); else step(); }
@@ -670,14 +674,13 @@ function parent(){
 
     <h2>Settings</h2>
     <div class="set"><label for="setKana">Show hiragana under pictures</label><input type="checkbox" id="setKana" ${S.settings.kana?'checked':''}></div>
-    <div class="set"><label for="setSlow">Slow voice 🐢 (a real slow recording, for learning pronunciation; your child can also tap 🐢/🐇 at the top)</label><input type="checkbox" id="setSlow" ${S.settings.slow?'checked':''}></div>
+    <div class="set"><span>Voice speed (slow is a real slow recording, for learning pronunciation; your child has the same bar in every lesson)</span>${speedBar()}</div>
     <div class="set"><label for="setSfx">Sound effects</label><input type="checkbox" id="setSfx" ${S.settings.sfx?'checked':''}></div>
     <div class="set"><span>Voice: recorded Japanese audio, __VOICE_CREDIT__. Anything without a recording uses the device voice.</span><button class="small-btn" id="testV">Test voice</button></div>
     <div class="set"><span>Progress file: move progress to another device, or keep a copy</span><span class="bk"><button class="small-btn" id="bkSave">Save</button><label class="small-btn">Load<input type="file" id="bkLoad" accept=".json,application/json" hidden></label></span></div>
     <div class="set"><span>Reset all progress</span><button class="small-btn danger" id="reset">Reset</button></div>
   </div>`);
   view.querySelectorAll('[data-say]').forEach(b => b.onclick = () => say(b.dataset.say));
-  $('#setSlow').onchange = e => { S.settings.slow = e.target.checked; save(); speedIcon(); say('こんにちは'); };
   $('#setKana').onchange = e => { S.settings.kana = e.target.checked; save(); };
   $('#setSfx').onchange = e => { S.settings.sfx = e.target.checked; save(); sfx.ok(); };
   $('#testV').onclick = () => say('こんにちは！ いっしょに にほんごを べんきょう しましょう。');
@@ -702,11 +705,9 @@ function parent(){
 $('#hmSlot').innerHTML = hanamaru(30);
 $('#homeBtn').onclick = () => { sfx.tap(); go(up()); };
 $('#lockBtn').onclick = openGate;
-function speedIcon(){ const b = $('#speedBtn'); if(!b) return; b.textContent = S.settings.slow ? '🐢' : '🐇';
-  b.setAttribute('aria-pressed', String(!!S.settings.slow)); b.classList.toggle('on', !!S.settings.slow); }
-$('#speedBtn').onclick = () => { S.settings.slow = !S.settings.slow; save(); speedIcon(); sfx.tap(); bump($('#speedBtn'));
-  toast(`<span class="emo">${S.settings.slow ? '🐢' : '🐇'}</span><span>${S.settings.slow ? 'ゆっくり' : 'ふつう'}</span>`); };
-speedIcon();
+/* the speed bar: one handler for every bar on the page; moving it replays the last word at the new speed */
+view.addEventListener('input', e => { if(!e.target.classList.contains('spd')) return;
+  S.settings.speed = +e.target.value; save(); sfx.tap(); if(lastSaid) say(lastSaid); else say('こんにちは'); });
 $('#soundWarn').onclick = soundHelp;
 go('home');
 /* offline: sw.js keeps a copy of the app (and its fonts) on the device after the first visit */

@@ -347,6 +347,10 @@ summary{font-weight:900;cursor:pointer}
 .bar{width:100%;max-width:780px;margin-inline:auto}
 body.wide .bar{max-width:none}
 
-/* 🐢/🐇 voice speed in the top bar */
-.speed-btn{font-size:28px;line-height:1}
-.speed-btn.on{background:color-mix(in srgb,var(--leaf) 20%,var(--card));box-shadow:0 4px 0 color-mix(in srgb,var(--leaf) 55%,var(--card))}
+/* the speed bar 🐢 ━━●━━ 🐇: three snap points, a big thumb for small fingers */
+.speedbar{display:flex;align-items:center;gap:8px;justify-content:flex-end;margin:-4px 0 4px}
+.speedbar .emo{font-size:26px;line-height:1}
+.spd{-webkit-appearance:none;appearance:none;width:130px;height:12px;border-radius:6px;background:linear-gradient(90deg,color-mix(in srgb,var(--leaf) 45%,var(--card)),color-mix(in srgb,var(--sun) 55%,var(--card)));margin:0;cursor:pointer}
+.spd::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;background:var(--card);border:4px solid var(--sky);box-shadow:0 3px 0 #28609F}
+.spd::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:var(--card);border:4px solid var(--sky);box-shadow:0 3px 0 #28609F}
+.set .speedbar{margin:0}
