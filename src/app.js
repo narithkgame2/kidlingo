@@ -1,6 +1,7 @@
 /* ---------- storage ---------- */
 const KEY = 'kidlingo.v1';
-const DEF_SET = {kana:true, rate:0.85, sfx:true, speed:1, family:true};
+let OFFLINE = {done:0, total:0, on:false};   // offline-copy progress (set by the service worker)
+const DEF_SET = {kana:true, rate:0.85, sfx:true, speed:1, family:true, hint:'en'};
 const fresh = () => ({hana:0, days:[], words:{}, kana:{}, themes:{}, stickers:{}, stars:{}, settings:{...DEF_SET}});
 function load(){ try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r){ const st = Object.assign({...DEF_SET}, r.settings||{}); if(st.slow){ st.speed = 0; delete st.slow; } return Object.assign(fresh(), r, {settings:st}); } }catch(e){} return fresh(); }
 let S = load();
@@ -403,6 +404,8 @@ function stBeats(s){
   });
 }
 const isP = () => L.t.kind === 'phrase';
+/* the meaning behind ?: English, or Khmer when a grown-up chooses it (KM is a draft until Nick has checked it) */
+const meaning = w => S.settings.hint === 'km' && KM[w.k] ? `<span class="km" lang="km">${KM[w.k]}</span>` : w.en;
 
 /* phrase game: see the scene, pick what you say */
 function stSay(s){
@@ -424,7 +427,7 @@ function stLearn(){
   const draw = (intro) => { const w = W[j];
     h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">さわって きいて ください</span></div>
       <button class="learn-card" id="lc" aria-label="${w.k}">${pic(w,'xl')}${isS() ? beatRow(w.k) : S.settings.kana || isP() ? `<span class="kana word${isP()?' ph':''}">${w.k}</span>` : ''}</button>
-      <div class="mean-row"><button class="qbtn" id="qm" aria-label="Show meaning" aria-expanded="false">?</button><span class="meaning" id="mean" hidden>${w.en}</span></div>
+      <div class="mean-row"><button class="qbtn" id="qm" aria-label="Show meaning" aria-expanded="false">?</button><span class="meaning" id="mean" hidden>${meaning(w)}</span></div>
       <div class="nav-row"><button class="btn" id="pv" aria-label="まえ" ${j===0?'disabled':''}>◀</button><span class="count">${j+1} / ${W.length}</span><button class="btn primary" id="nx" aria-label="つぎ">${j===W.length-1?'つぎへ ▶':'▶'}</button></div>`);
     say(intro ? [isS() ? 'てを たたいて かぞえましょう' : 'さわって きいて ください', w.k] : w.k);
     $('#lc').onclick = () => { say(w.k); bump($('#lc')); };
@@ -490,7 +493,7 @@ function stTalk(){
       h(`${stepsBar()}<div class="prompt"><span class="prompt-text">まねして いって みましょう！</span></div>
         <div class="talk-card">${pic(w,'xl')}<span class="kana word ph">${w.k}</span>
           <div class="rec-row"><button class="btn round" id="hear" aria-label="きく">${SPK}</button>${canRecord() ? `<button class="btn round mic" id="mic" aria-label="ろくおん">${MIC}</button><button class="btn round me" id="me" aria-label="じぶんの こえ" hidden>${EAR}</button>` : ''}</div>
-          <p class="grown-up">Grown-up: let them listen, then say it back together.${canRecord() ? ' The microphone records them so they can hear themselves.' : ''} Tap <b>いえました！</b> when they say it. <br>Meaning: <b>${w.en}</b></p>
+          <p class="grown-up">Grown-up: let them listen, then say it back together.${canRecord() ? ' The microphone records them so they can hear themselves.' : ''} Tap <b>いえました！</b> when they say it. <br>Meaning: <b>${meaning(w)}</b></p>
         </div>
         <div class="nav-row"><button class="btn" id="skip">つぎ ▶</button><button class="btn primary" id="said">いえました！</button></div>`);
       say(j === 0 ? ['まねして いって みましょう', w.k] : w.k);
@@ -843,14 +846,16 @@ function parent(){
     <details><summary>Record the app's phrases in your voice</summary>${PHRASES.flatMap(t => t.words).map(w => famRow(w.k, typeof w.p === 'string' ? w.p : '💬', w.en, false)).join('')}</details>
 
     <h2>Word and phrase list</h2>
+    <p class="note">Khmer meanings (after ·) are drafts: please check them and tell Claude any corrections before turning on Khmer hints.</p>
     <p class="note">Everything in the app with romaji and meaning, for any grown-up helping out. Your child sees only Japanese, pictures, and the meaning when they tap ? on a learning card.</p>
-    ${ALL.map(t => `<details><summary>${t.icon} <span class="kana">${t.name}</span> <small class="note">${t.kind === 'phrase' ? 'phrases' : 'words'}</small></summary>${t.words.map(w => `<div class="phrase"><button class="chip" data-say="${w.k}" aria-label="Hear">▶</button><span><span class="kana">${w.k}</span> <span class="ro">${romaji(w.k)}</span></span><span class="en">${w.en}</span></div>`).join('')}</details>`).join('')}
+    ${ALL.map(t => `<details><summary>${t.icon} <span class="kana">${t.name}</span> <small class="note">${t.kind === 'phrase' ? 'phrases' : 'words'}</small></summary>${t.words.map(w => `<div class="phrase"><button class="chip" data-say="${w.k}" aria-label="Hear">▶</button><span><span class="kana">${w.k}</span> <span class="ro">${romaji(w.k)}</span></span><span class="en">${w.en}${KM[w.k] ? ` · <span class="km" lang="km">${KM[w.k]}</span>` : ''}</span></div>`).join('')}</details>`).join('')}
 
     <h2>Talk together</h2>
     <p class="note">The app teaches words. Hearing and using them with you is what turns them into speech. A few lines to use during the day:</p>
     ${THEMES.map(t => `<details><summary>${t.icon} <span class="kana">${t.name}</span></summary>${TALK[t.id].map(([jp,en]) => `<div class="phrase"><button class="chip" data-say="${jp}" aria-label="Hear">▶</button><span class="kana">${jp}</span><span class="en">${en}</span></div>`).join('')}</details>`).join('')}
 
     <h2>Settings</h2>
+    <div class="set"><label for="setHint">Meaning hints for your child (behind ? on learning cards)</label><select id="setHint"><option value="en">English</option><option value="km">ខ្មែរ Khmer (draft, please check)</option></select></div>
     <div class="set"><label for="setKana">Show hiragana under pictures</label><input type="checkbox" id="setKana" ${S.settings.kana?'checked':''}></div>
     <div class="set"><span>Voice speed (slow is a real slow recording, for learning pronunciation; your child has the same bar in every lesson)</span>${speedBar()}</div>
     <div class="set"><label for="setSfx">Sound effects</label><input type="checkbox" id="setSfx" ${S.settings.sfx?'checked':''}></div>
@@ -862,6 +867,7 @@ function parent(){
   </div>`);
   view.querySelectorAll('[data-say]').forEach(b => b.onclick = () => say(b.dataset.say));
   $('#setKana').onchange = e => { S.settings.kana = e.target.checked; save(); };
+  const sh = $('#setHint'); sh.value = S.settings.hint || 'en'; sh.onchange = () => { S.settings.hint = sh.value; save(); };
   $('#setFam').onchange = e => { S.settings.family = e.target.checked; save(); };
   bindFamily(); prepBackupVoices();
   $('#setSfx').onchange = e => { S.settings.sfx = e.target.checked; save(); sfx.ok(); };
@@ -896,7 +902,6 @@ view.addEventListener('input', e => { if(!e.target.classList.contains('spd')) re
 $('#soundWarn').onclick = soundHelp;
 go('home');
 /* offline: sw.js keeps a copy of the app (and its fonts) on the device after the first visit */
-let OFFLINE = {done:0, total:0, on:false};
 if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
   navigator.serviceWorker.addEventListener('message', e => { if(e.data && e.data.type === 'clips'){ OFFLINE = {...OFFLINE, ...e.data}; const el = $('#offRow'); if(el) el.textContent = offlineText(); } });
   navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => { OFFLINE.on = true;

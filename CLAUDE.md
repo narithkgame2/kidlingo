@@ -55,6 +55,9 @@ and stops the engine itself. Kokoro (`--engine kokoro`) remains as a fallback.
   phrases with a recording form うちの ことば 🏡 (`famTopic()`, id `family`) in おはなし once there are 4 (`famReady`).
   Recordings go into the progress file (`voices`, data URLs read ahead by `prepBackupVoices` so Save can share at once).
   Lessons need ≥4 words (phrases) / ≥2 (others): `lesson()` refuses fewer, `pickTargets` never loops on an empty list.
+- **Khmer hints**: `KM` (data.js) = DRAFT Khmer meanings for every word and phrase (written by Claude, 2026-10-01; Nick
+  must check them). Parent setting "Meaning hints" (`S.settings.hint` 'en' | 'km', default English) changes what the
+  child sees behind ? (`meaning()`); parent mode shows the Khmer after the English for review. Font: Noto Sans Khmer.
 - **Sound lessons** (`SOUNDS`, kind `sound`): のばす おと (long sounds ー, おかあさん, ひこうき) and ちいさい っ, journey stops
   26 and 32. Each word lists wrong spellings a child might hear (`alt`). Steps: learn (long sounds in red, one dot per
   beat, coach "てを たたいて かぞえましょう") → 5× "ただしい ほうは どれですか？" (pick the spelling) → 3× "いくつ たたきますか？"

@@ -13,7 +13,7 @@
 <title>Kidlingo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@600&family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@600&family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+Khmer:wght@500;700&display=swap">
 <style>
 /* Layout: one-screen kid app on a Japanese school-notebook ground; big tactile buttons, masu practice squares, teacher's red hanamaru + hanko as rewards. Single light theme by choice. */
 :root{
@@ -433,6 +433,9 @@ body.wide .bar{max-width:none}
 .small-btn.rec-on{background:var(--shu);color:#fff}
 .small-btn.quiet{color:var(--muted)}
 
+/* Khmer meaning hints */
+.km{font-family:'Noto Sans Khmer','Khmer Sangam MN',sans-serif;font-weight:500;line-height:1.6}
+
 </style>
 </head>
 <body>
@@ -589,6 +592,10 @@ SPOKEN_EXTRA.push('ただしい ほうは どれですか？', 'いくつ たた
    sentences, so its examples are short ones; ヲ is so rare it has none. */
 const KANA_WORDS = {"あ": [["あり", "🐜"], ["あめ", "☔"], ["あし", "🦶"]], "い": [["いぬ", "🐶"], ["いちご", "🍓"], ["いす", "🪑"]], "う": [["うさぎ", "🐰"], ["うし", "🐮"], ["うみ", "🌊"]], "え": [["えんぴつ", "✏️"], ["えき", "🚉"], ["えび", "🦐"]], "お": [["おにぎり", "🍙"], ["おばけ", "👻"], ["おかし", "🍬"]], "か": [["かさ", "☂️"], ["かに", "🦀"], ["かめ", "🐢"]], "き": [["きりん", "🦒"], ["きのこ", "🍄"], ["きつね", "🦊"]], "く": [["くま", "🐻"], ["くるま", "🚗"], ["くつ", "👟"]], "け": [["けむし", "🐛"], ["けいさつ", "👮"]], "こ": [["こども", "🧒"], ["こおり", "🧊"]], "さ": [["さかな", "🐟"], ["さる", "🐵"], ["さくら", "🌸"]], "し": [["しか", "🦌"], ["しお", "🧂"], ["しんごう", "🚦"]], "す": [["すいか", "🍉"], ["すし", "🍣"], ["すず", "🔔"]], "せ": [["せんせい", "🧑‍🏫"], ["せっけん", "🧼"]], "そ": [["そら", "🌤️"], ["そり", "🛷"]], "た": [["たこ", "🐙"], ["たまご", "🥚"], ["たいこ", "🥁"]], "ち": [["ちず", "🗺️"], ["ちょうちょ", "🦋"]], "つ": [["つき", "🌙"], ["つみき", "🧱"]], "て": [["て", "✋"], ["てがみ", "✉️"], ["てぶくろ", "🧤"]], "と": [["とけい", "⏰"], ["とり", "🐦"], ["とら", "🐯"]], "な": [["なす", "🍆"], ["なし", "🍐"], ["なみ", "🌊"]], "に": [["にんじん", "🥕"], ["にじ", "🌈"], ["にわとり", "🐔"]], "ぬ": [["いぬ", "🐶"], ["ぬいぐるみ", "🧸"]], "ね": [["ねこ", "🐱"], ["ねずみ", "🐭"]], "の": [["のりまき", "🍣"], ["のこぎり", "🪚"]], "は": [["はな", "🌸"], ["はさみ", "✂️"], ["はと", "🕊️"]], "ひ": [["ひこうき", "✈️"], ["ひよこ", "🐤"], ["ひまわり", "🌻"]], "ふ": [["ふね", "🚢"], ["ふうせん", "🎈"], ["ふく", "👕"]], "へ": [["へび", "🐍"], ["へや", "🛏️"]], "ほ": [["ほし", "⭐"], ["ほん", "📚"], ["ほね", "🦴"]], "ま": [["まど", "🪟"], ["まめ", "🫘"]], "み": [["みみ", "👂"], ["みかん", "🍊"], ["みず", "💧"]], "む": [["むし", "🐛"], ["むぎ", "🌾"]], "め": [["め", "👁️"], ["めがね", "👓"]], "も": [["もも", "🍑"], ["もり", "🌳"]], "や": [["やま", "⛰️"], ["やさい", "🥬"], ["やぎ", "🐐"]], "ゆ": [["ゆき", "❄️"], ["ゆび", "☝️"]], "よ": [["よる", "🌃"], ["ようちえん", "🏫"]], "ら": [["らっぱ", "🎺"], ["らくだ", "🐫"]], "り": [["りんご", "🍎"], ["りす", "🐿️"]], "る": [["くるま", "🚗"], ["かえる", "🐸"], ["さる", "🐵"]], "れ": [["れっしゃ", "🚂"], ["れんが", "🧱"]], "ろ": [["ろうそく", "🕯️"], ["ろば", "🫏"]], "わ": [["わに", "🐊"], ["にわとり", "🐔"]], "を": [["ほんを よみます", "📖"], ["みずを のみます", "🥛"]], "ん": [["みかん", "🍊"], ["ほん", "📚"], ["えんぴつ", "✏️"]], "ア": [["アイス", "🍦"], ["アヒル", "🦆"]], "イ": [["イルカ", "🐬"], ["イカ", "🦑"]], "ウ": [["ウサギ", "🐰"], ["ウインナー", "🌭"]], "エ": [["エビ", "🦐"], ["エレベーター", "🛗"]], "オ": [["オレンジ", "🍊"], ["オムライス", "🍳"]], "カ": [["カメラ", "📷"], ["カレー", "🍛"]], "キ": [["キリン", "🦒"], ["キウイ", "🥝"]], "ク": [["クッキー", "🍪"], ["クレヨン", "🖍️"]], "ケ": [["ケーキ", "🍰"], ["ケチャップ", "🍅"]], "コ": [["コアラ", "🐨"], ["コップ", "🥛"]], "サ": [["サッカー", "⚽"], ["サンドイッチ", "🥪"]], "シ": [["シャツ", "👕"], ["シマウマ", "🦓"]], "ス": [["スプーン", "🥄"], ["スカート", "👗"]], "セ": [["セーター", "🧥"], ["セロリ", "🥬"]], "ソ": [["ソファ", "🛋️"], ["ソフトクリーム", "🍦"]], "タ": [["タクシー", "🚕"], ["タコ", "🐙"]], "チ": [["チーズ", "🧀"], ["チョコ", "🍫"]], "ツ": [["ツリー", "🎄"], ["スーツ", "👔"]], "テ": [["テレビ", "📺"], ["テント", "⛺"]], "ト": [["トマト", "🍅"], ["トラ", "🐯"]], "ナ": [["ナス", "🍆"], ["バナナ", "🍌"]], "ニ": [["ニンジン", "🥕"], ["テニス", "🎾"]], "ヌ": [["ヌードル", "🍜"], ["カヌー", "🛶"]], "ネ": [["ネクタイ", "👔"], ["ネックレス", "📿"]], "ノ": [["ノート", "📓"], ["ピアノ", "🎹"]], "ハ": [["ハンバーガー", "🍔"], ["ハート", "❤️"]], "ヒ": [["ヒヨコ", "🐤"], ["コーヒー", "☕"]], "フ": [["フォーク", "🍴"], ["フライパン", "🍳"]], "ヘ": [["ヘリコプター", "🚁"], ["ヘルメット", "⛑️"]], "ホ": [["ホットケーキ", "🥞"], ["ホテル", "🏨"]], "マ": [["マスク", "😷"], ["トマト", "🍅"]], "ミ": [["ミルク", "🥛"], ["ハミガキ", "🪥"]], "ム": [["ハム", "🍖"], ["ゲーム", "🎮"]], "メ": [["メロン", "🍈"], ["メガネ", "👓"]], "モ": [["レモン", "🍋"], ["モノレール", "🚝"]], "ヤ": [["ヤギ", "🐐"], ["タイヤ", "🛞"]], "ユ": [["ユニコーン", "🦄"]], "ヨ": [["ヨット", "⛵"], ["ヨーヨー", "🪀"]], "ラ": [["ライオン", "🦁"], ["ラーメン", "🍜"]], "リ": [["リボン", "🎀"], ["リス", "🐿️"]], "ル": [["ルビー", "💎"], ["ボール", "⚽"]], "レ": [["レモン", "🍋"], ["レストラン", "🍽️"]], "ロ": [["ロボット", "🤖"], ["ロケット", "🚀"]], "ワ": [["ワニ", "🐊"], ["ワゴン", "🚐"]], "ヲ": [], "ン": [["パン", "🍞"], ["ペンギン", "🐧"]]};
 
+/* Khmer meaning hints (parent setting "Meaning hints"): DRAFTS by Claude, 2026-10-01, to be checked by Nick before use.
+   Shown behind ? on learn cards when Khmer is chosen, and next to the English in parent mode for review. */
+const KM = {"いぬ": "ឆ្កែ", "ねこ": "ឆ្មា", "とり": "បក្សី", "さかな": "ត្រី", "うさぎ": "ទន្សាយ", "ぞう": "ដំរី", "さる": "ស្វា", "うま": "សេះ", "りんご": "ផ្លែប៉ោម", "みかん": "ក្រូចខ្វិច", "いちご": "ស្ត្របឺរី", "ぶどう": "ទំពាំងបាយជូរ", "もも": "ផ្លែប៉េស", "すいか": "ឪឡឹក", "たまご": "ពង", "おにぎり": "បាយដុំ", "あか": "ក្រហម", "あお": "ខៀវ", "きいろ": "លឿង", "みどり": "បៃតង", "しろ": "ស", "くろ": "ខ្មៅ", "ちゃいろ": "ត្នោត", "むらさき": "ស្វាយ", "いち": "មួយ", "に": "ពីរ", "さん": "បី", "よん": "បួន", "ご": "ប្រាំ", "ろく": "ប្រាំមួយ", "なな": "ប្រាំពីរ", "はち": "ប្រាំបី", "きゅう": "ប្រាំបួន", "じゅう": "ដប់", "め": "ភ្នែក", "みみ": "ត្រចៀក", "はな": "ច្រមុះ", "くち": "មាត់", "て": "ដៃ", "あし": "ជើង", "くるま": "ឡាន", "でんしゃ": "រថភ្លើង", "ひこうき": "យន្តហោះ", "ふね": "កប៉ាល់", "じてんしゃ": "កង់", "しょうぼうしゃ": "ឡានពន្លត់អគ្គិភ័យ", "パン": "នំបុ័ង", "バナナ": "ចេក", "ケーキ": "នំខេក", "アイス": "ការ៉េម", "ジュース": "ទឹកផ្លែឈើ", "クッキー": "នំឃុកឃី", "チョコ": "សូកូឡា", "ピザ": "ភីហ្សា", "ライオン": "តោ", "パンダ": "ផេនដា", "ペンギン": "ភេនឃ្វីន", "コアラ": "កូអាឡា", "キリン": "ហ្សីរ៉ាហ្វ", "ゴリラ": "ស្វាហ្គោរីឡា", "カンガルー": "កង់ហ្គូរូ", "ワニ": "ក្រពើ", "テレビ": "ទូរទស្សន៍", "ボール": "បាល់", "ゲーム": "ហ្គេម", "カメラ": "កាមេរ៉ា", "ロボット": "រ៉ូបូត", "スプーン": "ស្លាបព្រា", "バス": "ឡានក្រុង", "タクシー": "តាក់ស៊ី", "おはよう ございます": "អរុណសួស្តី", "こんにちは": "សួស្តី", "こんばんは": "សាយ័ណ្ហសួស្តី", "おやすみなさい": "រាត្រីសួស្តី", "さようなら": "លាហើយ", "はじめまして": "រីករាយដែលបានស្គាល់", "おげんきですか？": "សុខសប្បាយទេ?", "げんきです！": "ខ្ញុំសុខសប្បាយ!", "いただきます": "(និយាយមុនពេលញ៉ាំ)", "ごちそうさまでした": "(និយាយក្រោយពេលញ៉ាំរួច)", "おいしいです！": "ឆ្ងាញ់!", "いってきます": "ខ្ញុំទៅហើយ", "いってらっしゃい": "ទៅដោយសុវត្ថិភាព", "ただいま": "ខ្ញុំមកផ្ទះវិញហើយ", "おかえりなさい": "ស្វាគមន៍ការមកផ្ទះវិញ", "ありがとう ございます": "អរគុណ", "どういたしまして": "មិនអីទេ", "ごめんなさい": "សុំទោស", "いいですよ": "មិនអីទេ", "どうぞ": "អញ្ជើញ", "すみません": "សូមទោស", "うれしいです": "ខ្ញុំសប្បាយចិត្ត", "たのしいです！": "សប្បាយណាស់!", "かなしいです": "ខ្ញុំព្រួយចិត្ត", "おこっています": "ខ្ញុំខឹង", "こわいです": "ខ្ញុំខ្លាច", "つかれました": "ខ្ញុំហត់ហើយ", "ねむいです": "ខ្ញុំងងុយគេង", "おなかが すきました": "ខ្ញុំឃ្លាន", "のどが かわきました": "ខ្ញុំស្រេកទឹក", "おみず ください": "សុំទឹក", "トイレに いきたいです": "ខ្ញុំចង់ទៅបង្គន់", "いたいです！": "ឈឺ!", "たすけて ください！": "ជួយផង!", "もう いっかい おねがいします": "សូមម្តងទៀត", "いっしょに あそびましょう": "តោះលេងជាមួយគ្នា", "かして ください": "សុំខ្ចីបន្តិច", "まって ください！": "សូមចាំបន្តិច!", "みて ください！": "មើលនេះ!", "できました！": "ធ្វើបានហើយ!", "すごいです！": "អស្ចារ្យណាស់!", "がんばって ください！": "ខំប្រឹងឡើង!", "これは なんですか？": "នេះជាអ្វី?", "どこですか？": "នៅឯណា?", "だれですか？": "នរណា?", "どうしてですか？": "ហេតុអ្វី?", "いくつですか？": "ប៉ុន្មាន?", "いま なんじですか？": "ឥឡូវម៉ោងប៉ុន្មាន?", "みぎ": "ស្តាំ", "ひだり": "ឆ្វេង", "ジュース ください": "សុំទឹកផ្លែឈើ", "アイスが たべたいです！": "ខ្ញុំចង់ញ៉ាំការ៉េម!", "ケーキ、おいしいです！": "នំខេកឆ្ងាញ់!", "テレビを みても いいですか？": "ខ្ញុំអាចមើលទូរទស្សន៍បានទេ?", "ゲームを しましょう！": "តោះលេងហ្គេម!", "ボールで あそびましょう": "តោះលេងបាល់", "バスに のりましょう": "តោះជិះឡានក្រុង", "ママ、だいすきです": "ម៉ាក់ ខ្ញុំស្រលាញ់ម៉ាក់ណាស់", "パパ、みて ください！": "ប៉ា មើលនេះ!", "チーズ": "ឈីស", "ラーメン": "មីរ៉ាមេន", "おかあさん": "ម្តាយ", "おばあさん": "យាយ", "おじいさん": "តា", "おとうさん": "ឪពុក", "ふうせん": "ប៉េងប៉ោង", "らっぱ": "ត្រែ", "ばった": "កណ្តូប", "はっぱ": "ស្លឹកឈើ", "せっけん": "សាប៊ូ", "れっしゃ": "រថភ្លើង", "コップ": "កែវ", "ロケット": "រ៉ុក្កែត", "ヨット": "ទូកក្ដោង", "ベッド": "គ្រែ", "サッカー": "បាល់ទាត់"};
+
 /* Stroke order for hiragana and katakana: SVG paths (viewBox 0 0 109 109), one per stroke, in writing order.
    From KanjiVG (http://kanjivg.tagaini.net), © Ulrich Apel, Creative Commons Attribution-Share Alike 3.0.
    Used for the stroke-order animation, the start dot and arrow of the next stroke, and checking each stroke. */
@@ -596,7 +603,8 @@ const STROKE_D = {"あ": ["M31.01,33c0.88,0.88,2.75,1.82,5.25,1.75c8.62-0.25,20-
 
 /* ---------- storage ---------- */
 const KEY = 'kidlingo.v1';
-const DEF_SET = {kana:true, rate:0.85, sfx:true, speed:1, family:true};
+let OFFLINE = {done:0, total:0, on:false};   // offline-copy progress (set by the service worker)
+const DEF_SET = {kana:true, rate:0.85, sfx:true, speed:1, family:true, hint:'en'};
 const fresh = () => ({hana:0, days:[], words:{}, kana:{}, themes:{}, stickers:{}, stars:{}, settings:{...DEF_SET}});
 function load(){ try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r){ const st = Object.assign({...DEF_SET}, r.settings||{}); if(st.slow){ st.speed = 0; delete st.slow; } return Object.assign(fresh(), r, {settings:st}); } }catch(e){} return fresh(); }
 let S = load();
@@ -999,6 +1007,8 @@ function stBeats(s){
   });
 }
 const isP = () => L.t.kind === 'phrase';
+/* the meaning behind ?: English, or Khmer when a grown-up chooses it (KM is a draft until Nick has checked it) */
+const meaning = w => S.settings.hint === 'km' && KM[w.k] ? `<span class="km" lang="km">${KM[w.k]}</span>` : w.en;
 
 /* phrase game: see the scene, pick what you say */
 function stSay(s){
@@ -1020,7 +1030,7 @@ function stLearn(){
   const draw = (intro) => { const w = W[j];
     h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">さわって きいて ください</span></div>
       <button class="learn-card" id="lc" aria-label="${w.k}">${pic(w,'xl')}${isS() ? beatRow(w.k) : S.settings.kana || isP() ? `<span class="kana word${isP()?' ph':''}">${w.k}</span>` : ''}</button>
-      <div class="mean-row"><button class="qbtn" id="qm" aria-label="Show meaning" aria-expanded="false">?</button><span class="meaning" id="mean" hidden>${w.en}</span></div>
+      <div class="mean-row"><button class="qbtn" id="qm" aria-label="Show meaning" aria-expanded="false">?</button><span class="meaning" id="mean" hidden>${meaning(w)}</span></div>
       <div class="nav-row"><button class="btn" id="pv" aria-label="まえ" ${j===0?'disabled':''}>◀</button><span class="count">${j+1} / ${W.length}</span><button class="btn primary" id="nx" aria-label="つぎ">${j===W.length-1?'つぎへ ▶':'▶'}</button></div>`);
     say(intro ? [isS() ? 'てを たたいて かぞえましょう' : 'さわって きいて ください', w.k] : w.k);
     $('#lc').onclick = () => { say(w.k); bump($('#lc')); };
@@ -1086,7 +1096,7 @@ function stTalk(){
       h(`${stepsBar()}<div class="prompt"><span class="prompt-text">まねして いって みましょう！</span></div>
         <div class="talk-card">${pic(w,'xl')}<span class="kana word ph">${w.k}</span>
           <div class="rec-row"><button class="btn round" id="hear" aria-label="きく">${SPK}</button>${canRecord() ? `<button class="btn round mic" id="mic" aria-label="ろくおん">${MIC}</button><button class="btn round me" id="me" aria-label="じぶんの こえ" hidden>${EAR}</button>` : ''}</div>
-          <p class="grown-up">Grown-up: let them listen, then say it back together.${canRecord() ? ' The microphone records them so they can hear themselves.' : ''} Tap <b>いえました！</b> when they say it. <br>Meaning: <b>${w.en}</b></p>
+          <p class="grown-up">Grown-up: let them listen, then say it back together.${canRecord() ? ' The microphone records them so they can hear themselves.' : ''} Tap <b>いえました！</b> when they say it. <br>Meaning: <b>${meaning(w)}</b></p>
         </div>
         <div class="nav-row"><button class="btn" id="skip">つぎ ▶</button><button class="btn primary" id="said">いえました！</button></div>`);
       say(j === 0 ? ['まねして いって みましょう', w.k] : w.k);
@@ -1439,14 +1449,16 @@ function parent(){
     <details><summary>Record the app's phrases in your voice</summary>${PHRASES.flatMap(t => t.words).map(w => famRow(w.k, typeof w.p === 'string' ? w.p : '💬', w.en, false)).join('')}</details>
 
     <h2>Word and phrase list</h2>
+    <p class="note">Khmer meanings (after ·) are drafts: please check them and tell Claude any corrections before turning on Khmer hints.</p>
     <p class="note">Everything in the app with romaji and meaning, for any grown-up helping out. Your child sees only Japanese, pictures, and the meaning when they tap ? on a learning card.</p>
-    ${ALL.map(t => `<details><summary>${t.icon} <span class="kana">${t.name}</span> <small class="note">${t.kind === 'phrase' ? 'phrases' : 'words'}</small></summary>${t.words.map(w => `<div class="phrase"><button class="chip" data-say="${w.k}" aria-label="Hear">▶</button><span><span class="kana">${w.k}</span> <span class="ro">${romaji(w.k)}</span></span><span class="en">${w.en}</span></div>`).join('')}</details>`).join('')}
+    ${ALL.map(t => `<details><summary>${t.icon} <span class="kana">${t.name}</span> <small class="note">${t.kind === 'phrase' ? 'phrases' : 'words'}</small></summary>${t.words.map(w => `<div class="phrase"><button class="chip" data-say="${w.k}" aria-label="Hear">▶</button><span><span class="kana">${w.k}</span> <span class="ro">${romaji(w.k)}</span></span><span class="en">${w.en}${KM[w.k] ? ` · <span class="km" lang="km">${KM[w.k]}</span>` : ''}</span></div>`).join('')}</details>`).join('')}
 
     <h2>Talk together</h2>
     <p class="note">The app teaches words. Hearing and using them with you is what turns them into speech. A few lines to use during the day:</p>
     ${THEMES.map(t => `<details><summary>${t.icon} <span class="kana">${t.name}</span></summary>${TALK[t.id].map(([jp,en]) => `<div class="phrase"><button class="chip" data-say="${jp}" aria-label="Hear">▶</button><span class="kana">${jp}</span><span class="en">${en}</span></div>`).join('')}</details>`).join('')}
 
     <h2>Settings</h2>
+    <div class="set"><label for="setHint">Meaning hints for your child (behind ? on learning cards)</label><select id="setHint"><option value="en">English</option><option value="km">ខ្មែរ Khmer (draft, please check)</option></select></div>
     <div class="set"><label for="setKana">Show hiragana under pictures</label><input type="checkbox" id="setKana" ${S.settings.kana?'checked':''}></div>
     <div class="set"><span>Voice speed (slow is a real slow recording, for learning pronunciation; your child has the same bar in every lesson)</span>${speedBar()}</div>
     <div class="set"><label for="setSfx">Sound effects</label><input type="checkbox" id="setSfx" ${S.settings.sfx?'checked':''}></div>
@@ -1458,6 +1470,7 @@ function parent(){
   </div>`);
   view.querySelectorAll('[data-say]').forEach(b => b.onclick = () => say(b.dataset.say));
   $('#setKana').onchange = e => { S.settings.kana = e.target.checked; save(); };
+  const sh = $('#setHint'); sh.value = S.settings.hint || 'en'; sh.onchange = () => { S.settings.hint = sh.value; save(); };
   $('#setFam').onchange = e => { S.settings.family = e.target.checked; save(); };
   bindFamily(); prepBackupVoices();
   $('#setSfx').onchange = e => { S.settings.sfx = e.target.checked; save(); sfx.ok(); };
@@ -1492,7 +1505,6 @@ view.addEventListener('input', e => { if(!e.target.classList.contains('spd')) re
 $('#soundWarn').onclick = soundHelp;
 go('home');
 /* offline: sw.js keeps a copy of the app (and its fonts) on the device after the first visit */
-let OFFLINE = {done:0, total:0, on:false};
 if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
   navigator.serviceWorker.addEventListener('message', e => { if(e.data && e.data.type === 'clips'){ OFFLINE = {...OFFLINE, ...e.data}; const el = $('#offRow'); if(el) el.textContent = offlineText(); } });
   navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => { OFFLINE.on = true;

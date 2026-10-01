@@ -415,3 +415,6 @@ body.wide .bar{max-width:none}
 .fok{color:var(--leaf);font-weight:700;font-size:13px}
 .small-btn.rec-on{background:var(--shu);color:#fff}
 .small-btn.quiet{color:var(--muted)}
+
+/* Khmer meaning hints */
+.km{font-family:'Noto Sans Khmer','Khmer Sangam MN',sans-serif;font-weight:500;line-height:1.6}
