@@ -199,7 +199,7 @@ def main():
     finally:
         v.close()
     removed = [t for t in clips if t not in wanted]
-    OUT.write_text(json.dumps({t: clips[t] for t in wanted}, ensure_ascii=False))
+    OUT.write_text(json.dumps({t: clips[t] for t in wanted if t in clips}, ensure_ascii=False))
     credit = "Kokoro-82M, voice jf_alpha (Apache 2.0)" if use_kokoro else f'VOICEVOX:{COACH["name"]}, VOICEVOX:{MODEL["name"]}'
     META.write_text(json.dumps({"engine": engine_id, "format": "audio/mp4", "credit": credit}, ensure_ascii=False))
     print(f"{len(wanted)} clips ({len(todo)} made, {len(removed)} removed) -> {OUT.relative_to(ROOT)}")

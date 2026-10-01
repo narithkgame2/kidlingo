@@ -32,7 +32,7 @@ and stops the engine itself. Kokoro (`--engine kokoro`) remains as a fallback.
 
 ## How the app works
 - **Home = the journey**: an e-sugoroku train ride across Japan (`JOURNEY`): ほっかいどう → とうきょう → ふじさん →
-  きょうと → おおさか → ひろしま → ふくおか → おきなわ, 37 stops. A stop is a topic lesson (word or phrase) or a kana row to
+  きょうと → おおさか → ひろしま → ふくおか → おきなわ, 39 stops. A stop is a topic lesson (word or phrase) or a kana row to
   trace (`h0`..`h9`, `k0`..`k9`; row 9 = わをん). Stops zig-zag down a railway; the train 🚃 waits at the next stop,
   finished stops show 1-3 はなまる (`S.stars`), later stops are locked (tap = wiggle). The big **つぎ** button opens the
   next stop. Finishing a stop the first time sets `ARRIVE`: back on the map the train rides on, and entering a new
@@ -49,6 +49,10 @@ and stops the engine itself. Kokoro (`--engine kokoro`) remains as a fallback.
   いってらっしゃい, ただいま, おかえり, ありがとう, どういたしまして, どうぞ, ごめんなさい, いいよ).
 - **Stars**: lessons from first tries (`tally`; ≥85% 3, ≥50% 2, else 1); kana rows from failed checks (0 = 3, ≤2 = 2).
   Best kept. Stops finished before stars existed show 3.
+- **Sound lessons** (`SOUNDS`, kind `sound`): のばす おと (long sounds ー, おかあさん, ひこうき) and ちいさい っ, journey stops
+  26 and 32. Each word lists wrong spellings a child might hear (`alt`). Steps: learn (long sounds in red, one dot per
+  beat, coach "てを たたいて かぞえましょう") → 5× "ただしい ほうは どれですか？" (pick the spelling) → 3× "いくつ たたきますか？"
+  (count beats; `beats()` counts ー, っ and ん, joins small ゃゅょ). Distractor spellings have no audio (never spoken).
 - **Writing a kana** (`trace`, Nick 2026-10-01: "correct way of writing with feedback, and 2-3 words below"): an SVG masu
   (rounded border inside the viewBox, never clipped) with KanjiVG strokes (`src/strokes.js`, `STROKE_D`, viewBox 109,
   CC BY-SA 3.0, credited in parent mode). First time: strokes animate in order, numbered, coach "かきじゅんを みましょう".

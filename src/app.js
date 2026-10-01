@@ -254,7 +254,7 @@ function stopDone(id){ return isRow(id) ? rowChars(id).every(c => S.kana[c]) : (
 const nextStop = () => STOPS.findIndex(x => !stopDone(x.id));
 const stopName = id => isRow(id) ? rowChars(id).join('') : topicOf(id).name;
 const stopIcon = id => isRow(id) ? `<span class="kana">${rowChars(id)[0]}</span>` : `<span class="emo">${topicOf(id).icon}</span>`;
-const stopKind = id => isRow(id) ? 'write' : topicOf(id).kind === 'phrase' ? 'talk' : 'words';
+const stopKind = id => isRow(id) ? 'write' : topicOf(id).kind === 'phrase' ? 'talk' : topicOf(id).kind === 'sound' ? 'sound' : 'words';
 function openStop(id){ sfx.tap(); if(isRow(id)) startRow(id); else go('lesson', id); }
 let ARRIVE = null;
 const XS = [50, 77, 50, 23];   // stops zig-zag across the board (percent of the width)
@@ -326,7 +326,7 @@ function home(){
 }
 
 function themes(kind){
-  const list = kind === 'phrase' ? PHRASES : THEMES;
+  const list = kind === 'phrase' ? PHRASES : [...THEMES, ...SOUNDS];
   h(`<h1 class="screen-title">${kind === 'phrase' ? 'おはなし' : 'ことば'}</h1><div class="theme-grid">${list.map(t => `
     <button class="theme-card" data-go="lesson" data-arg="${t.id}" aria-label="${t.name}" style="--tc:var(${t.hue})">
       <span class="emo m">${t.icon}</span><span class="theme-name">${t.name}</span>${t.kata ? '<span class="kata-badge kana">カタカナ</span>' : ''}
@@ -344,6 +344,9 @@ function lesson(id){
     pickTargets(t.words, 3).forEach(w => steps.push({type:'listen', w}));
     pickTargets(t.words, 2).forEach(w => steps.push({type:'read', w}));
     steps.push({type:'talk'});
+  } else if(t.kind === 'sound'){
+    pickTargets(t.words, 5).forEach(w => steps.push({type:'spell', w}));
+    pickTargets(t.words, 3).forEach(w => steps.push({type:'beats', w}));
   } else {
     pickTargets(t.words, 5).forEach(w => steps.push({type:'listen', w}));
     pickTargets(t.words, 4).forEach(w => steps.push({type:'read', w}));
@@ -359,7 +362,44 @@ const speedBar = () => `<div class="speedbar"><span class="emo" aria-hidden="tru
 const tally = ok => { if(!L) return; L.n++; if(ok) L.ok++; };
 const starsFor = (ok, n) => !n ? 3 : ok/n >= .85 ? 3 : ok/n >= .5 ? 2 : 1;
 function next(){ if(current !== 'lesson') return; L.i++; if(L.i >= L.steps.length) finish(); else step(); }
-function step(){ const s = L.steps[L.i]; ({learn:stLearn, listen:stListen, read:stRead, match:stMatch, talk:stTalk, say:stSay})[s.type](s); }
+function step(){ const s = L.steps[L.i]; ({learn:stLearn, listen:stListen, read:stRead, match:stMatch, talk:stTalk, say:stSay, spell:stSpell, beats:stBeats})[s.type](s); }
+const isS = () => L.t.kind === 'sound';
+/* ー, っ/ッ and long vowels (おかあさん, ひこうき) shown in red: the sounds that take a full beat */
+const VOW = c => { const h = c.replace(/[ァ-ヶ]/g, x => String.fromCharCode(x.charCodeAt(0) - 0x60)), r = {ゃ:'a', ゅ:'u', ょ:'o'}[h] || RO[h] || RO[h.slice(-1)]; return r ? r.slice(-1) : ''; };
+function markWord(w){ const cs = [...w];
+  return cs.map((c, i) => { const p = cs[i-1] && VOW(cs[i-1]), long = /[ーっッ]/.test(c) || (p && ({あ:'a', い:'ie', う:'uo', え:'e', お:'o'}[c] || '').includes(p) && !/[ゃゅょ]/.test(c));
+    return long ? `<b class="mk">${c}</b>` : c; }).join(''); }
+const beatRow = w => `<span class="beats" aria-label="${beats(w).length}">${beats(w).map(b => `<span class="beat"><span class="kana">${markWord(b)}</span><i></i></span>`).join('')}</span>`;
+
+/* sound game 1: hear the word, pick the right spelling */
+function stSpell(s){
+  const w = s.w, opts = shuffle([w.k, ...w.alt]); let first = true, locked = false;
+  h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">ただしい ほうは どれですか？</span></div>
+    <div class="scene">${pic(w,'xl')}</div>
+    <div class="spell-opts">${opts.map((o,i) => `<button class="spell-opt kana" data-i="${i}">${o}</button>`).join('')}</div>`);
+  say(['ただしい ほうは どれですか？', w.k]);
+  $('#sp').onclick = () => say(w.k);
+  view.querySelectorAll('.spell-opt').forEach(b => b.onclick = () => {
+    if(locked) return; const o = opts[+b.dataset.i];
+    if(o === w.k){ locked = true; b.classList.add('right'); b.innerHTML = markWord(o); sfx.ok(); say(w.k); if(first){ rec(w.k, true); tally(true); addHana(1); } setTimeout(next, 1400); }
+    else { b.classList.add('wrong'); b.disabled = true; sfx.no(); shake(b); say(w.k); if(first){ first = false; rec(w.k, false); tally(false); } }
+  });
+}
+/* sound game 2: count the beats (claps) */
+function stBeats(s){
+  const w = s.w, n = beats(w.k).length, choices = [...new Set([n-1, n, n+1].filter(x => x >= 1))]; let first = true, locked = false;
+  h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">いくつ たたきますか？</span></div>
+    <div class="scene">${pic(w,'xl')}<span class="kana word bword" id="bword">${w.k}</span></div>
+    <div class="beat-opts">${choices.map(c => `<button class="beat-opt" data-n="${c}" aria-label="${c}"><span class="claps">${'👏'.repeat(c)}</span><b>${c}</b></button>`).join('')}</div>`);
+  say(['いくつ たたきますか？', w.k]);
+  $('#sp').onclick = () => say(w.k);
+  view.querySelectorAll('.beat-opt').forEach(b => b.onclick = () => {
+    if(locked) return; const c = +b.dataset.n;
+    if(c === n){ locked = true; b.classList.add('right'); sfx.ok(); $('#bword').outerHTML = beatRow(w.k);
+      say(w.k); if(first){ rec(w.k, true); tally(true); addHana(1); } setTimeout(next, 2200); }
+    else { b.classList.add('wrong'); b.disabled = true; sfx.no(); shake(b); say(w.k); if(first){ first = false; rec(w.k, false); tally(false); } }
+  });
+}
 const isP = () => L.t.kind === 'phrase';
 
 /* phrase game: see the scene, pick what you say */
@@ -381,10 +421,10 @@ function stLearn(){
   const W = L.t.words; let j = 0;
   const draw = (intro) => { const w = W[j];
     h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">さわって きいて ください</span></div>
-      <button class="learn-card" id="lc" aria-label="${w.k}">${pic(w,'xl')}${S.settings.kana || isP() ? `<span class="kana word${isP()?' ph':''}">${w.k}</span>` : ''}</button>
+      <button class="learn-card" id="lc" aria-label="${w.k}">${pic(w,'xl')}${isS() ? beatRow(w.k) : S.settings.kana || isP() ? `<span class="kana word${isP()?' ph':''}">${w.k}</span>` : ''}</button>
       <div class="mean-row"><button class="qbtn" id="qm" aria-label="Show meaning" aria-expanded="false">?</button><span class="meaning" id="mean" hidden>${w.en}</span></div>
       <div class="nav-row"><button class="btn" id="pv" aria-label="まえ" ${j===0?'disabled':''}>◀</button><span class="count">${j+1} / ${W.length}</span><button class="btn primary" id="nx" aria-label="つぎ">${j===W.length-1?'つぎへ ▶':'▶'}</button></div>`);
-    say(intro ? ['さわって きいて ください', w.k] : w.k);
+    say(intro ? [isS() ? 'てを たたいて かぞえましょう' : 'さわって きいて ください', w.k] : w.k);
     $('#lc').onclick = () => { say(w.k); bump($('#lc')); };
     $('#sp').onclick = () => say(w.k);
     $('#qm').onclick = () => { const m = $('#mean'); m.hidden = !m.hidden; $('#qm').setAttribute('aria-expanded', String(!m.hidden)); sfx.tap(); };
@@ -700,6 +740,8 @@ function parent(){
     ${THEMES.map(topicRow).join('')}
     <h2>Phrase topics</h2>
     ${PHRASES.map(topicRow).join('')}
+    <h2>Sound topics (long sounds ー and small っ)</h2>
+    ${SOUNDS.map(topicRow).join('')}
 
     <h2>Needs practice</h2>
     ${weak.length ? `<div class="chips">${weak.map(w => `<button class="chip kana" data-say="${w.k}">${w.k} <small>✕${S.words[w.k].miss}</small></button>`).join('')}</div><p class="note">Tap a word to hear it. Try using these at home this week.</p>`

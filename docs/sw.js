@@ -4,7 +4,7 @@
      device. After the page loads it sends the full list ("save-clips"); missing clips download in the background and
      clips no longer used are removed. Safari plays audio with byte-range requests, so saved clips get 206 replies.
    - Google Fonts are saved the first time they load. Only kidlingo- caches are touched. */
-const V = 'kidlingo-7ef951eefc', CLIPS = 'kidlingo-clips', FONTS = 'kidlingo-fonts';
+const V = 'kidlingo-c20179b5a9', CLIPS = 'kidlingo-clips', FONTS = 'kidlingo-fonts';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('kidlingo-') && ![V, CLIPS, FONTS].includes(k)).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

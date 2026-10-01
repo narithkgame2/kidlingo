@@ -380,3 +380,24 @@ body.wide .bar{max-width:none}
 .tnav{flex-wrap:nowrap;gap:8px}
 .tnav .btn{font-size:clamp(16px,4.4vw,20px);padding:10px clamp(10px,3vw,18px);white-space:nowrap}
 .tnav .btn.round{flex:none}
+
+/* ---------- sound lessons: long sounds ー and small っ (2026-10) ---------- */
+.k-sound{--kc:var(--plum);--kc-d:#5E3A91}
+.mk{color:var(--shu);font-weight:600}
+.beats{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.beat{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:clamp(40px,11vw,60px);line-height:1}
+.beat i{width:14px;height:14px;border-radius:50%;background:var(--tc)}
+.scene .beats{margin-top:12px}
+.scene .bword{font-size:clamp(40px,11vw,60px);line-height:1.1;margin-top:10px}
+.scene{flex-direction:column}
+.spell-opts{display:grid;gap:12px}
+.spell-opt{border:0;border-radius:20px;background:var(--card);box-shadow:0 5px 0 color-mix(in srgb,var(--tc) 35%,var(--line));min-height:72px;font-size:clamp(30px,8vw,42px);letter-spacing:.06em;cursor:pointer}
+.spell-opt:active:not(:disabled){transform:translateY(4px)}
+.spell-opt.right{background:color-mix(in srgb,var(--leaf) 18%,var(--card));box-shadow:0 0 0 5px var(--leaf)}
+.spell-opt.wrong{opacity:.3}
+.beat-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.beat-opt{border:0;border-radius:20px;background:var(--card);box-shadow:0 5px 0 color-mix(in srgb,var(--tc) 35%,var(--line));padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;min-width:0}
+.beat-opt .claps{font-size:clamp(16px,4.6vw,24px);line-height:1.2;text-align:center;word-break:break-all}
+.beat-opt b{font-size:30px;font-weight:900}
+.beat-opt.right{background:color-mix(in srgb,var(--leaf) 18%,var(--card));box-shadow:0 0 0 5px var(--leaf)}
+.beat-opt.wrong{opacity:.3}

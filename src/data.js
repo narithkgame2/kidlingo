@@ -58,7 +58,25 @@ function romaji(str){
   }).join(' ').replace(/、/g, ', ').replace(/！/g,'!').replace(/？/g,'?');
 }
 PHRASES.forEach(t => t.words = t.words.map(([k,p,en,sc]) => ({k, p, en, sc, t:t.id, phrase:true})));
-const ALL = [...THEMES, ...PHRASES];
+/* Sound lessons: long sounds (ー, ああ/いい/うう…) and small っ. Each is a full beat (拍): Japanese teachers have children
+   clap them. Each word: [kana, picture, English, wrong spellings a child might hear instead]. Steps: learn (beats shown),
+   "ただしい ほうは どれですか？" (pick the spelling), "いくつ たたきますか？" (count the beats). */
+const SOUNDS = [
+  {id:'nobasu', kind:'sound', name:'のばす おと', icon:'〰️', hue:'--plum', words:[
+    ['ケーキ','🍰','cake',['ケキ','ケーキー']],['ボール','⚽','ball',['ボル','ボールー']],['スプーン','🥄','spoon',['スプン','スープン']],
+    ['ゲーム','🎮','game',['ゲム','ゲームー']],['チーズ','🧀','cheese',['チズ','チーズー']],['ラーメン','🍜','ramen',['ラメン','ラーメーン']],
+    ['おかあさん','👩','mother',['おかさん']],['おばあさん','👵','grandmother',['おばさん']],['おじいさん','👴','grandfather',['おじさん']],
+    ['おとうさん','👨','father',['おとさん']],['ひこうき','✈️','airplane',['ひこき']],['ふうせん','🎈','balloon',['ふせん']]]},
+  {id:'chiisaitsu', kind:'sound', name:'ちいさい っ', icon:'🥁', hue:'--sun', words:[
+    ['らっぱ','🎺','trumpet',['らぱ']],['ばった','🦗','grasshopper',['ばた']],['はっぱ','🍃','leaf',['はぱ']],
+    ['せっけん','🧼','soap',['せけん']],['れっしゃ','🚂','train',['れしゃ']],['コップ','🥛','cup',['コプ']],
+    ['ロケット','🚀','rocket',['ロケト','ロッケト']],['ロボット','🤖','robot',['ロボト','ロッボト']],['ヨット','⛵','sailboat',['ヨト']],
+    ['ベッド','🛏️','bed',['ベド']],['サッカー','⚽','soccer',['サカー','サッカ']],['クッキー','🍪','cookie',['クキー','クッキ']]]}
+];
+SOUNDS.forEach(t => t.words = t.words.map(([k,p,en,alt]) => ({k, p, en, alt, t:t.id})));
+/* beats (拍) in a word: every kana counts, including ー, っ and ん; small ゃゅょ etc. join the kana before them */
+const beats = w => [...w.replace(/[\s、。！？]/g, '')].reduce((a, c) => { if(/[ぁぃぅぇぉゃゅょゎァィゥェォャュョヮ]/.test(c) && a.length) a[a.length-1] += c; else a.push(c); return a; }, []);
+const ALL = [...THEMES, ...PHRASES, ...SOUNDS];
 const ALLW = THEMES.flatMap(t => t.words);
 const ALLP = PHRASES.flatMap(t => t.words);
 
@@ -94,15 +112,15 @@ const JOURNEY = [
   {name:'ふじさん',     icon:'🗻', bg:'#DDEFE6', deco:['☁️','🌲','🍵','☁️'], stops:['numbers','h3','kimochi','h4','body']},
   {name:'きょうと',     icon:'⛩️', bg:'#FBE3DA', deco:['🎋','🍡','🦌','🏮'], stops:['h5','hoshii','vehicles','h6','asobu']},
   {name:'おおさか',     icon:'🏯', bg:'#FBF0D2', deco:['🐙','🎡','🍢'], stops:['h7','shitsumon','h8','h9']},
-  {name:'ひろしま',     icon:'🍁', bg:'#FADFD8', deco:['🍁','⛵','🍁','🦌'], stops:['k0','oyatsu','k1','k2','zoo']},
-  {name:'ふくおか',     icon:'🍜', bg:'#ECE3F6', deco:['🏮','🍓','🌊','🐟'], stops:['k3','k4','mono','k5','k6']},
+  {name:'ひろしま',     icon:'🍁', bg:'#FADFD8', deco:['🍁','⛵','🍁','🦌'], stops:['k0','oyatsu','nobasu','k1','k2','zoo']},
+  {name:'ふくおか',     icon:'🍜', bg:'#ECE3F6', deco:['🏮','🍓','🌊','🐟'], stops:['k3','k4','chiisaitsu','mono','k5','k6']},
   {name:'おきなわ',     icon:'🏝️', bg:'#D6F1F2', deco:['🐠','🌺','🐢','🐬'], stops:['k7','suki','k8','k9']}
 ];
 const rowChars = id => { const rows = id[0] === 'h' ? KANA_ROWS : KATA_ROWS, r = +id.slice(1);
   return [...(r < 9 ? rows[r] : rows[9] + rows[10])].filter(c => c !== '・'); };
 JOURNEY.forEach(g => SPOKEN_EXTRA.push(g.name + 'に つきました！'));
 SPOKEN_EXTRA.push('ゴール！ おめでとう ございます！', 'しゅっぱつ！');
-SPOKEN_EXTRA.push('かきじゅんを みましょう', 'じゅんばんが ちがいます', 'むきが ちがいます', 'もう いちど かきましょう', 'いいですね！');
+SPOKEN_EXTRA.push('ただしい ほうは どれですか？', 'いくつ たたきますか？', 'てを たたいて かぞえましょう', 'かきじゅんを みましょう', 'じゅんばんが ちがいます', 'むきが ちがいます', 'もう いちど かきましょう', 'いいですね！');
 
 /* Example words under each kana on the tracing screen (2-3, the kana highlighted, tap to hear). を is used in
    sentences, so its examples are short ones; ヲ is so rare it has none. */
