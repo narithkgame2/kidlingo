@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 voice-samples/
 CLAUDE.local.md
+tools/

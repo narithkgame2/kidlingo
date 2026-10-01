@@ -206,7 +206,7 @@ function checkStickers(){
   const got = STICKERS.filter(s => !S.stickers[s.id] && s.test());
   if(!got.length) return;
   got.forEach(s => S.stickers[s.id] = fmt(new Date())); save();
-  toast(`<span class="emo">${got[0].e}</span><span>シール ゲット！</span>`); sfx.win();
+  toast(`<span class="emo">${got[0].e}</span><span>シールを もらいました！</span>`); sfx.win();
 }
 let L = null;
 function addHana(n){ S.hana += n; if(L) L.earned += n; markDay(); save(); updateBar(); checkStickers(); }
@@ -216,7 +216,7 @@ function updateBar(){ document.getElementById('hanaN').textContent = S.hana; doc
 const $ = s => document.querySelector(s);
 const view = $('#view');
 const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
-function h(html){ view.innerHTML = html; view.scrollTop = 0; shownAt = performance.now(); }
+function h(html, cls=''){ view.innerHTML = `<div class="page ${cls}">${html}</div>`; view.scrollTop = 0; shownAt = performance.now(); }
 function bindGo(){ view.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { sfx.tap(); go(b.dataset.go, b.dataset.arg); }); }
 function pickTargets(words, n){
   const ranked = words.map(w => { const s = S.words[w.k]; const weight = s ? (s.streak >= 2 ? 1 : 3 + s.miss) : 2.5; return {w, key:Math.random()*weight}; })
@@ -233,6 +233,7 @@ function go(name, arg){
   if(name !== 'trace') RS = null;
   stopRecorder();
   prevScreen = current; current = name;
+  document.body.classList.toggle('wide', name === 'kana');
   $('#homeBtn').style.visibility = name === 'home' ? 'hidden' : 'visible';
   ({home, themes:() => themes('word'), phrases:() => themes('phrase'), lesson, kana:kanaGrid, trace, stickers, parent})[name](arg);
   updateBar();
@@ -312,9 +313,9 @@ function home(){
     setTimeout(() => {
       if(!tr.isConnected) return; tr.classList.remove('ride');
       if(now){ now.classList.remove('waiting'); now.classList.add('arrive'); }
-      if(nx < 0){ sfx.win(); say('ゴール！ おめでとう！'); confetti(); return; }
+      if(nx < 0){ sfx.win(); say('ゴール！ おめでとう ございます！'); confetti(); return; }
       if(STOPS[nx].gi !== STOPS[from].gi){ const g = JOURNEY[STOPS[nx].gi];
-        sfx.win(); toast(`<span class="emo">${g.icon}</span><span>${g.name} に ついた！</span>`); say(g.name + ' に ついた！'); confetti(); setTimeout(checkStickers, 3100); }
+        sfx.win(); toast(`<span class="emo">${g.icon}</span><span>${g.name}に つきました！</span>`); say(g.name + 'に つきました！'); confetti(); setTimeout(checkStickers, 3100); }
       else sfx.ok();
     }, reduce ? 0 : 1400);
   }, reduce ? 0 : 650);
@@ -328,7 +329,7 @@ function themes(kind){
       <span class="meter" aria-hidden="true">${t.words.map(w => `<i class="${mastered(w.k)?'on':''}"></i>`).join('')}</span>
       ${(S.themes[t.id]||0) > 0 ? `<span class="done-mark">${hanamaru(34)}</span>` : ''}
     </button>`).join('')}</div>`);
-  bindGo(); say('どれに する？');
+  bindGo(); say('どれに しますか？');
 }
 
 function lesson(id){
@@ -359,10 +360,10 @@ const isP = () => L.t.kind === 'phrase';
 /* phrase game: see the scene, pick what you say */
 function stSay(s){
   const w = s.w, opts = shuffle([w, ...shuffle(L.t.words.filter(x => x.k !== w.k)).slice(0,2)]); let first = true, locked = false;
-  h(`${stepsBar()}<div class="prompt"><span class="prompt-text">なんて いう？</span></div>
+  h(`${stepsBar()}<div class="prompt"><span class="prompt-text">なんと いいますか？</span></div>
     <div class="scene">${pic(w,'xl')}</div>
     <div class="say-opts">${opts.map((o,i) => `<div class="say-row"><button class="spk hint small" data-hear="${i}" aria-label="きく">${SPK}</button><button class="say-opt kana" data-i="${i}">${o.k}</button></div>`).join('')}</div>`);
-  say('なんて いう？');
+  say('なんと いいますか？');
   view.querySelectorAll('[data-hear]').forEach(b => b.onclick = () => say(opts[+b.dataset.hear].k));
   view.querySelectorAll('.say-opt').forEach(b => b.onclick = () => {
     if(locked) return; const o = opts[+b.dataset.i];
@@ -374,11 +375,11 @@ function stSay(s){
 function stLearn(){
   const W = L.t.words; let j = 0;
   const draw = (intro) => { const w = W[j];
-    h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">さわって きいてね</span></div>
+    h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">さわって きいて ください</span></div>
       <button class="learn-card" id="lc" aria-label="${w.k}">${pic(w,'xl')}${S.settings.kana || isP() ? `<span class="kana word${isP()?' ph':''}">${w.k}</span>` : ''}</button>
       <div class="mean-row"><button class="qbtn" id="qm" aria-label="Show meaning" aria-expanded="false">?</button><span class="meaning" id="mean" hidden>${w.en}</span></div>
       <div class="nav-row"><button class="btn" id="pv" aria-label="まえ" ${j===0?'disabled':''}>◀</button><span class="count">${j+1} / ${W.length}</span><button class="btn primary" id="nx" aria-label="つぎ">${j===W.length-1?'つぎへ ▶':'▶'}</button></div>`);
-    say(intro ? ['さわって きいてね', w.k] : w.k);
+    say(intro ? ['さわって きいて ください', w.k] : w.k);
     $('#lc').onclick = () => { say(w.k); bump($('#lc')); };
     $('#sp').onclick = () => say(w.k);
     $('#qm').onclick = () => { const m = $('#mean'); m.hidden = !m.hidden; $('#qm').setAttribute('aria-expanded', String(!m.hidden)); sfx.tap(); };
@@ -390,9 +391,9 @@ function stLearn(){
 
 function stListen(s){
   const w = s.w, opts = options(w); let first = true, locked = false;
-  h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">どれかな？</span></div>
+  h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">どれですか？</span></div>
     <div class="choices${isP() ? ' wide' : ''}">${opts.map((o,i) => `<button class="choice" data-i="${i}" aria-label="${o.k}">${pic(o,'l')}</button>`).join('')}</div>`);
-  say(w.k);
+  say(['どれですか？', w.k]);
   $('#sp').onclick = () => say(w.k);
   view.querySelectorAll('.choice').forEach(b => b.onclick = () => {
     if(locked) return; const o = opts[+b.dataset.i];
@@ -404,9 +405,9 @@ function stListen(s){
 function stRead(s){
   const w = s.w, opts = options(w); let first = true, hinted = false, locked = false;
   h(`${stepsBar()}<div class="prompt">${spk('sp','hint')}<span class="kana read-word${isP()?' ph':''}">${w.k}</span></div>
-    <p class="sub">よんで えらんでね</p>
+    <p class="sub">よんで えらんで ください</p>
     <div class="choices${isP() ? ' wide' : ''}">${opts.map((o,i) => `<button class="choice" data-i="${i}" aria-label="${o.k}">${pic(o,'l')}</button>`).join('')}</div>`);
-  say('よんで えらんでね');
+  say('よんで えらんで ください');
   $('#sp').onclick = () => { hinted = true; say(w.k); };
   view.querySelectorAll('.choice').forEach(b => b.onclick = () => {
     if(locked) return; const o = opts[+b.dataset.i];
@@ -419,9 +420,9 @@ function stMatch(){
   const ws = shuffle(L.t.words).slice(0,6);
   const cards = shuffle([...ws.map(w => ({w, kind:'p'})), ...ws.map(w => ({w, kind:'k'}))]);
   let open = [], matched = 0, busy = false;
-  h(`${stepsBar()}<div class="prompt"><span class="prompt-text">おなじ ものを みつけよう</span></div>
+  h(`${stepsBar()}<div class="prompt"><span class="prompt-text">おなじ ものを みつけましょう</span></div>
     <div class="mgrid">${cards.map((c,i) => `<button class="mcard" data-i="${i}" aria-label="カード ${i+1}"><span class="back">${hanamaru(46)}</span><span class="face">${c.kind==='p' ? pic(c.w,'s') : `<span class="kana mword">${c.w.k}</span>`}</span></button>`).join('')}</div>`);
-  say('おなじ ものを みつけよう');
+  say('おなじ ものを みつけましょう');
   const els = [...view.querySelectorAll('.mcard')];
   els.forEach((el,i) => el.onclick = () => {
     if(busy || el.classList.contains('up')) return;
@@ -439,13 +440,13 @@ function stTalk(){
   const ws = shuffle(L.t.words).slice(0,3); let j = 0;
   if(isP()){
     const drawP = () => { if(j >= ws.length) return next(); const w = ws[j];
-      h(`${stepsBar()}<div class="prompt"><span class="prompt-text">まねして いってみよう！</span></div>
+      h(`${stepsBar()}<div class="prompt"><span class="prompt-text">まねして いって みましょう！</span></div>
         <div class="talk-card">${pic(w,'xl')}<span class="kana word ph">${w.k}</span>
           <div class="rec-row"><button class="btn round" id="hear" aria-label="きく">${SPK}</button>${canRecord() ? `<button class="btn round mic" id="mic" aria-label="ろくおん">${MIC}</button><button class="btn round me" id="me" aria-label="じぶんの こえ" hidden>${EAR}</button>` : ''}</div>
-          <p class="grown-up">Grown-up: let them listen, then say it back together.${canRecord() ? ' The microphone records them so they can hear themselves.' : ''} Tap <b>いえた！</b> when they say it. <br>Meaning: <b>${w.en}</b></p>
+          <p class="grown-up">Grown-up: let them listen, then say it back together.${canRecord() ? ' The microphone records them so they can hear themselves.' : ''} Tap <b>いえました！</b> when they say it. <br>Meaning: <b>${w.en}</b></p>
         </div>
-        <div class="nav-row"><button class="btn" id="skip">つぎ ▶</button><button class="btn primary" id="said">いえた！</button></div>`);
-      say(w.k, Math.min(S.settings.rate, .75));
+        <div class="nav-row"><button class="btn" id="skip">つぎ ▶</button><button class="btn primary" id="said">いえました！</button></div>`);
+      say(j === 0 ? ['まねして いって みましょう', w.k] : w.k, Math.min(S.settings.rate, .75));
       $('#hear').onclick = () => say(w.k, Math.min(S.settings.rate, .75));
       if(canRecord()) bindRecorder($('#mic'), $('#me'));
       $('#skip').onclick = () => { j++; drawP(); };
@@ -455,16 +456,16 @@ function stTalk(){
     return drawP();
   }
   const draw = () => { if(j >= ws.length) return next(); const w = ws[j];
-    h(`${stepsBar()}<div class="prompt"><span class="prompt-text">ママ・パパと いってみよう！</span></div>
+    h(`${stepsBar()}<div class="prompt"><span class="prompt-text">ママや パパと いって みましょう！</span></div>
       <div class="talk-card">${pic(w,'xl')}
-        <p class="grown-up">Grown-up: point and ask <b class="kana">これは なに？</b> Tap <b>いえた！</b> when they say it in Japanese.<br>Answer: <b class="kana">${w.k}</b> <button class="linkish" id="hear">hear it</button></p>
+        <p class="grown-up">Grown-up: point and ask <b class="kana">これは なんですか？</b> Tap <b>いえました！</b> when they say it in Japanese.<br>Answer: <b class="kana">${w.k}</b> <button class="linkish" id="hear">hear it</button></p>
       </div>
-      <div class="nav-row"><button class="btn" id="skip">つぎ ▶</button><button class="btn primary" id="said">いえた！</button></div>`);
+      <div class="nav-row"><button class="btn" id="skip">つぎ ▶</button><button class="btn primary" id="said">いえました！</button></div>`);
     $('#hear').onclick = () => say(w.k);
     $('#skip').onclick = () => { j++; draw(); };
     $('#said').onclick = () => { sfx.ok(); rec(w.k, true); tally(true); addHana(1); j++; setTimeout(draw, 450); };
   };
-  say('ママ・パパと いってみよう'); draw();
+  say('ママや パパと いって みましょう'); draw();
 }
 
 function finish(){
@@ -492,11 +493,11 @@ function kanaGrid(arg){
   h(`<h1 class="screen-title">かく</h1>
     <div class="seg" role="tablist"><button role="tab" class="seg-btn ${kata?'':'on'}" data-s="hira" aria-selected="${!kata}">ひらがな</button><button role="tab" class="seg-btn ${kata?'on':''}" data-s="kata" aria-selected="${kata}">カタカナ</button></div>
     <p class="sub">${doneIn(list)} / 46</p>
-    <div class="kgrid">${rows.map(r => [...r].map(c => c === '・' ? '<span class="kcell blank"></span>' :
-      `<button class="kcell ${S.kana[c]?'done':''}" data-k="${c}" aria-label="${c}"><span class="kana">${c}</span>${S.kana[c] ? `<span class="kmark">${hanamaru(20)}</span>` : ''}</button>`).join('')).join('')}</div>`);
+    <div class="kgrid" aria-label="${kata ? 'カタカナ' : 'ひらがな'}">${rows.map(r => [...r].map(c => c === '・' ? '<span class="kcell blank"></span>' :
+      `<button class="kcell ${S.kana[c]?'done':''}" data-k="${c}" aria-label="${c}"><span class="kana">${c}</span>${S.kana[c] ? `<span class="kmark">${hanamaru(20)}</span>` : ''}</button>`).join('')).join('')}</div>`, 'wide');
   view.querySelectorAll('.kcell[data-k]').forEach(b => b.onclick = () => { sfx.tap(); go('trace', b.dataset.k); });
   view.querySelectorAll('.seg-btn').forEach(b => b.onclick = () => { sfx.tap(); go('kana', b.dataset.s); });
-  say(kata ? 'カタカナ' : 'ひらがな');
+  say([kata ? 'カタカナ' : 'ひらがな', 'どれを かきますか？']);
 }
 
 /* A kana row on the journey: trace each kana of the row in turn (RS = the row session). */
@@ -510,15 +511,15 @@ async function trace(k){
   const LIST = KATA.includes(k) ? KATA : KANA; script = LIST === KATA ? 'kata' : 'hira';
   const idx = LIST.indexOf(k), n = STROKES[k] || 1;
   h(`${RS ? `<div class="row-dots" aria-label="${RS.j+1} / ${RS.chars.length}">${RS.chars.map((c,i) => `<span class="kana${i < RS.j ? ' done' : i === RS.j ? ' now' : ''}">${c}</span>`).join('')}</div>` : ''}
-    <div class="trace-top"><button class="icon-btn" id="tp" aria-label="まえ" ${idx===0||RS?'disabled':''}>◀</button><span class="prompt-text">なぞって かこう</span><button class="icon-btn" id="tn" aria-label="つぎ" ${idx===LIST.length-1||RS?'disabled':''}>▶</button></div>
+    <div class="trace-top"><button class="icon-btn" id="tp" aria-label="まえ" ${idx===0||RS?'disabled':''}>◀</button><span class="prompt-text">なぞって かきましょう</span><button class="icon-btn" id="tn" aria-label="つぎ" ${idx===LIST.length-1||RS?'disabled':''}>▶</button></div>
     <div class="masu-wrap" id="mw"><canvas id="masu" aria-label="${k} を なぞる"></canvas><div class="tstamp" id="tstamp" hidden>${hanko()}</div></div>
-    <div class="stroke-row" id="srow"><span class="kana">${n}</span><span>かいで かこう</span><span class="sdots" id="sdots">${'<i></i>'.repeat(n)}</span></div>
-    ${PAIR[k] ? `<p class="pair">ひらがな <button class="pair-chip kana" id="pairBtn">${PAIR[k]}</button> と おなじ おと</p>` : ''}
-    <div class="nav-row"><button class="btn round" id="tsay" aria-label="きく">${SPK}</button><button class="btn" id="tclear">けす</button><button class="btn primary" id="tdone">できた</button></div>`);
+    <div class="stroke-row" id="srow"><span class="kana">${n}</span><span>かいで かきましょう</span><span class="sdots" id="sdots">${'<i></i>'.repeat(n)}</span></div>
+    ${PAIR[k] ? `<p class="pair">ひらがな <button class="pair-chip kana" id="pairBtn">${PAIR[k]}</button> と おなじ おとです</p>` : ''}
+    <div class="nav-row"><button class="btn round" id="tsay" aria-label="きく">${SPK}</button><button class="btn" id="tclear">けします</button><button class="btn primary" id="tdone">できました</button></div>`);
   $('#tp').onclick = () => go('trace', LIST[idx-1]);
   if(PAIR[k]) $('#pairBtn').onclick = () => say(PAIR[k]);
   $('#tn').onclick = () => go('trace', LIST[idx+1]);
-  say(k);
+  say(!RS || RS.j === 0 ? ['なぞって かきましょう', k] : k);
 
   const cv = $('#masu'), size = Math.floor($('#mw').getBoundingClientRect().width), dpr = devicePixelRatio || 1;
   cv.width = size*dpr; cv.height = size*dpr; cv.style.width = cv.style.height = size + 'px';
@@ -564,19 +565,19 @@ async function trace(k){
   };
   $('#tsay').onclick = () => say(k);
   $('#tclear').onclick = () => { strokes = []; passed = false; $('#tstamp').hidden = true; resetDone(); redraw(); dots(); };
-  const resetDone = () => { const b = $('#tdone'); b.textContent = 'できた'; b.onclick = done; };
+  const resetDone = () => { const b = $('#tdone'); b.textContent = 'できました'; b.onclick = done; };
   const done = () => {
-    if(!strokes.length){ say('なぞって かこう'); shake(cv); return; }
+    if(!strokes.length){ say('なぞって かきましょう'); shake(cv); return; }
     const r = check();
     if(r.coverage >= .7 && r.precision >= .78){
       passed = true; const first = !S.kana[k]; S.kana[k] = (S.kana[k]||0) + 1; save();
       $('#tstamp').hidden = false; sfx.win(); say('よく できました'); confetti(); addHana(first ? 2 : 1); if(RS) RS.earned += first ? 2 : 1;
       const b = $('#tdone');
-      if(RS){ const last = RS.j >= RS.chars.length-1; b.textContent = last ? 'できた！' : 'つぎ ▶';
+      if(RS){ const last = RS.j >= RS.chars.length-1; b.textContent = last ? 'できました！' : 'つぎ ▶';
         b.onclick = () => { if(last) return finishRow(); RS.j++; go('trace', RS.chars[RS.j]); }; }
       else { b.textContent = idx < LIST.length-1 ? 'つぎ ▶' : 'おわり';
         b.onclick = () => idx < LIST.length-1 ? go('trace', LIST[idx+1]) : go('kana'); }
-    } else { if(RS) RS.fails++; sfx.no(); shake(cv); say(r.coverage < .7 ? 'もう すこし！' : 'せんの うえを なぞってね'); }
+    } else { if(RS) RS.fails++; sfx.no(); shake(cv); say(r.coverage < .7 ? 'もう すこしです！' : 'せんの うえを なぞって ください'); }
   };
   resetDone();
 }
@@ -668,7 +669,7 @@ function parent(){
     <div class="set"><label for="setKana">Show hiragana under pictures</label><input type="checkbox" id="setKana" ${S.settings.kana?'checked':''}></div>
     <div class="set"><label for="setRate">Voice speed</label><select id="setRate"><option value="0.65">Slow</option><option value="0.85">Normal</option><option value="1">Natural</option></select></div>
     <div class="set"><label for="setSfx">Sound effects</label><input type="checkbox" id="setSfx" ${S.settings.sfx?'checked':''}></div>
-    <div class="set"><span>Voice: recorded Japanese audio (Kokoro-82M, voice jf_alpha, Apache 2.0). Anything without a recording uses the device voice.</span><button class="small-btn" id="testV">Test voice</button></div>
+    <div class="set"><span>Voice: recorded Japanese audio, __VOICE_CREDIT__. Anything without a recording uses the device voice.</span><button class="small-btn" id="testV">Test voice</button></div>
     <div class="set"><span>Progress file: move progress to another device, or keep a copy</span><span class="bk"><button class="small-btn" id="bkSave">Save</button><label class="small-btn">Load<input type="file" id="bkLoad" accept=".json,application/json" hidden></label></span></div>
     <div class="set"><span>Reset all progress</span><button class="small-btn danger" id="reset">Reset</button></div>
   </div>`);
@@ -677,7 +678,7 @@ function parent(){
   rs.onchange = () => { S.settings.rate = parseFloat(rs.value); save(); say('こんにちは'); };
   $('#setKana').onchange = e => { S.settings.kana = e.target.checked; save(); };
   $('#setSfx').onchange = e => { S.settings.sfx = e.target.checked; save(); sfx.ok(); };
-  $('#testV').onclick = () => say('こんにちは！ いっしょに にほんごを べんきょう しよう。');
+  $('#testV').onclick = () => say('こんにちは！ いっしょに にほんごを べんきょう しましょう。');
   /* backup: progress is per device, so a file moves it (share sheet on iPhone/iPad, a download elsewhere) */
   const dl = f => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); };
   $('#bkSave').onclick = () => { const f = new File([JSON.stringify({app:'kidlingo', v:1, at:new Date().toISOString(), state:S})], `kidlingo-progress-${fmt(new Date())}.json`, {type:'application/json'});

@@ -12,11 +12,22 @@ FOOTER = """
   ALL.forEach(t => t.words.forEach(w => set.add(w.k)));
   KANA.forEach(k => set.add(k)); KATA.forEach(k => set.add(k));
   Object.values(TALK).forEach(a => a.forEach(([jp]) => set.add(jp)));
+  const model = new Set(set);
   SPOKEN_EXTRA.forEach(t => set.add(t));
-  return JSON.stringify([...set]); })()"""
+  return JSON.stringify([...set].map(t => [t, model.has(t) ? 'model' : 'coach'])); })()"""
+
+
+def roles():
+    """[[text, 'model' | 'coach'], ...]: words, phrases, kana and talk lines are the model voice (what the child copies);
+    instructions, questions and praise (SPOKEN_EXTRA) are the coach voice."""
+    return _run()
 
 
 def texts():
+    return [t for t, _ in _run()]
+
+
+def _run():
     code = (ROOT / "src" / "data.js").read_text(encoding="utf-8") + FOOTER
     with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as f:
         f.write(code)
@@ -26,4 +37,4 @@ def texts():
 
 
 if __name__ == "__main__":
-    print(json.dumps(texts(), ensure_ascii=False))
+    print(json.dumps(roles(), ensure_ascii=False))

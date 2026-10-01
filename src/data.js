@@ -11,14 +11,14 @@ const THEMES = [
   {id:'mono', kata:true, name:'おうちの もの', icon:'📺', hue:'--sky', words:[['テレビ','📺'],['ボール','⚽'],['ゲーム','🎮'],['カメラ','📷'],['ロボット','🤖'],['スプーン','🥄'],['バス','🚌'],['タクシー','🚕']]}
 ];
 const PHRASES = [
-  {id:'aisatsu', kind:'phrase', name:'あいさつ', icon:'👋', hue:'--sun', words:[['おはよう','🌅🙂','Good morning'],['こんにちは','☀️👋','Hello'],['こんばんは','🌆👋','Good evening'],['おやすみなさい','🌙😴','Good night'],['またね','👋🎒','See you later'],['はじめまして','🙂🤝🙂','Nice to meet you'],['げんき？','🙂❓','How are you?'],['げんきだよ！','😄💪','I’m fine!']]},
-  {id:'ie', kind:'phrase', name:'いえで', icon:'🏠', hue:'--leaf', words:[['いただきます','🙏🍚','(said before eating)'],['ごちそうさまでした','🍽️✨','(said after eating)'],['おいしい！','😋🍙','Delicious!'],['いってきます','🎒🚪','I’m heading out',{s:['🏠👩','➡️','🧒🎒'],sp:2,t:'🌅'}],['いってらっしゃい','👋🏠','Have a good day (to someone leaving)',{s:['🏠👩','➡️','🧒🎒'],sp:0,t:'🌅'}],['ただいま','🏠🎒','I’m home',{s:['🏠👩','⬅️','🧒🎒'],sp:2,t:'🌇'}],['おかえり','🤗🏠','Welcome home',{s:['🏠👩','⬅️','🧒🎒'],sp:0,t:'🌇'}]]},
-  {id:'arigatou', kind:'phrase', name:'ありがとう', icon:'🙏', hue:'--plum', words:[['ありがとう','🎁😊','Thank you',{s:['🧒','⬅️🍪','👧'],sp:0}],['どういたしまして','😊👌','You’re welcome',{s:['🧒🍪','👧'],sp:1,sub:{i:0,e:'🙏'}}],['ごめんなさい','😢🙇','I’m sorry',{s:['🧒','🥛💦','👩'],sp:0}],['いいよ','👌🙂','That’s okay',{s:['🧒','🥛💦','👩'],sp:2,sub:{i:0,e:'🙇'}}],['どうぞ','🤲🍪','Here you go',{s:['🧒','⬅️🍪','👧'],sp:2}],['すみません','✋🙂','Excuse me']]},
-  {id:'kimochi', kind:'phrase', name:'きもち', icon:'😄', hue:'--shu', words:[['うれしい','😄','I’m happy'],['たのしい！','🥳','This is fun!'],['かなしい','😢','I’m sad'],['おこってる','😠','I’m angry'],['こわい','😨','I’m scared'],['つかれた','😩','I’m tired'],['ねむい','😪','I’m sleepy']]},
-  {id:'hoshii', kind:'phrase', name:'おねがい', icon:'🙋', hue:'--sky', words:[['おなかが すいた','🍽️😋','I’m hungry'],['のどが かわいた','🥤😮‍💨','I’m thirsty'],['おみず ください','💧🙏','Water, please'],['トイレに いきたい','🚽🏃','I need the toilet'],['いたい！','🤕','Ouch! / It hurts'],['たすけて！','🆘','Help!'],['もういっかい！','🔁☝️','One more time!']]},
-  {id:'asobu', kind:'phrase', name:'あそぼう', icon:'🧸', hue:'--leaf', words:[['いっしょに あそぼう','🧸🙂🙂','Let’s play together'],['かして','🤲🧸','Can I borrow it?'],['まって！','✋⏳','Wait!'],['みて！','👀👆','Look!'],['できた！','🎉🙌','I did it!'],['すごい！','⭐😲','Amazing!'],['がんばって！','💪🔥','You can do it!']]},
-  {id:'shitsumon', kind:'phrase', name:'しつもん', icon:'❓', hue:'--plum', words:[['これは なに？','👉📦❓','What is this?'],['どこ？','🔍❓','Where?'],['だれ？','👤❓','Who?'],['なんで？','🤔❓','Why?'],['いくつ？','🔢❓','How many?'],['いま なんじ？','⏰❓','What time is it?'],['みぎ','➡️','Right'],['ひだり','⬅️','Left']]},
-  {id:'suki', kind:'phrase', kata:true, name:'すきな もの', icon:'🧃', hue:'--sun', words:[['ジュース ください','🧃🙏','Juice, please'],['アイス たべたい！','🍦😋','I want ice cream!'],['ケーキ おいしい！','🍰😋','The cake is delicious!'],['テレビ みても いい？','📺❓','Can I watch TV?'],['ゲーム しよう！','🎮🙂','Let’s play a game!'],['ボールで あそぼう','⚽🙂🙂','Let’s play with the ball'],['バスに のろう','🚌👆','Let’s get on the bus'],['ママ、だいすき','👩❤️','Mama, I love you'],['パパ、みて！','👨👀','Papa, look!']]}
+  {id:'aisatsu', kind:'phrase', name:'あいさつ', icon:'👋', hue:'--sun', words:[['おはよう ございます','🌅🙂','Good morning'],['こんにちは','☀️👋','Hello'],['こんばんは','🌆👋','Good evening'],['おやすみなさい','🌙😴','Good night'],['さようなら','👋🎒','Goodbye'],['はじめまして','🙂🤝🙂','Nice to meet you'],['おげんきですか？','🙂❓','How are you?'],['げんきです！','😄💪','I’m fine!']]},
+  {id:'ie', kind:'phrase', name:'いえで', icon:'🏠', hue:'--leaf', words:[['いただきます','🙏🍚','(said before eating)'],['ごちそうさまでした','🍽️✨','(said after eating)'],['おいしいです！','😋🍙','Delicious!'],['いってきます','🎒🚪','I’m heading out',{s:['🏠👩','➡️','🧒🎒'],sp:2,t:'🌅'}],['いってらっしゃい','👋🏠','Have a good day (to someone leaving)',{s:['🏠👩','➡️','🧒🎒'],sp:0,t:'🌅'}],['ただいま','🏠🎒','I’m home',{s:['🏠👩','⬅️','🧒🎒'],sp:2,t:'🌇'}],['おかえりなさい','🤗🏠','Welcome home',{s:['🏠👩','⬅️','🧒🎒'],sp:0,t:'🌇'}]]},
+  {id:'arigatou', kind:'phrase', name:'ありがとう', icon:'🙏', hue:'--plum', words:[['ありがとう ございます','🎁😊','Thank you',{s:['🧒','⬅️🍪','👧'],sp:0}],['どういたしまして','😊👌','You’re welcome',{s:['🧒🍪','👧'],sp:1,sub:{i:0,e:'🙏'}}],['ごめんなさい','😢🙇','I’m sorry',{s:['🧒','🥛💦','👩'],sp:0}],['いいですよ','👌🙂','That’s okay',{s:['🧒','🥛💦','👩'],sp:2,sub:{i:0,e:'🙇'}}],['どうぞ','🤲🍪','Here you go',{s:['🧒','⬅️🍪','👧'],sp:2}],['すみません','✋🙂','Excuse me']]},
+  {id:'kimochi', kind:'phrase', name:'きもち', icon:'😄', hue:'--shu', words:[['うれしいです','😄','I’m happy'],['たのしいです！','🥳','This is fun!'],['かなしいです','😢','I’m sad'],['おこっています','😠','I’m angry'],['こわいです','😨','I’m scared'],['つかれました','😩','I’m tired'],['ねむいです','😪','I’m sleepy']]},
+  {id:'hoshii', kind:'phrase', name:'おねがい', icon:'🙋', hue:'--sky', words:[['おなかが すきました','🍽️😋','I’m hungry'],['のどが かわきました','🥤😮‍💨','I’m thirsty'],['おみず ください','💧🙏','Water, please'],['トイレに いきたいです','🚽🏃','I need the toilet'],['いたいです！','🤕','Ouch! / It hurts'],['たすけて ください！','🆘','Help!'],['もう いっかい おねがいします','🔁☝️','One more time, please']]},
+  {id:'asobu', kind:'phrase', name:'あそぼう', icon:'🧸', hue:'--leaf', words:[['いっしょに あそびましょう','🧸🙂🙂','Let’s play together'],['かして ください','🤲🧸','Can I borrow it, please?'],['まって ください！','✋⏳','Please wait!'],['みて ください！','👀👆','Please look!'],['できました！','🎉🙌','I did it!'],['すごいです！','⭐😲','Amazing!'],['がんばって ください！','💪🔥','You can do it!']]},
+  {id:'shitsumon', kind:'phrase', name:'しつもん', icon:'❓', hue:'--plum', words:[['これは なんですか？','👉📦❓','What is this?'],['どこですか？','🔍❓','Where?'],['だれですか？','👤❓','Who?'],['どうしてですか？','🤔❓','Why?'],['いくつですか？','🔢❓','How many?'],['いま なんじですか？','⏰❓','What time is it?'],['みぎ','➡️','Right'],['ひだり','⬅️','Left']]},
+  {id:'suki', kind:'phrase', kata:true, name:'すきな もの', icon:'🧃', hue:'--sun', words:[['ジュース ください','🧃🙏','Juice, please'],['アイスが たべたいです！','🍦😋','I’d like ice cream!'],['ケーキ、おいしいです！','🍰😋','The cake is delicious!'],['テレビを みても いいですか？','📺❓','May I watch TV?'],['ゲームを しましょう！','🎮🙂','Let’s play a game!'],['ボールで あそびましょう','⚽🙂🙂','Let’s play with the ball'],['バスに のりましょう','🚌👆','Let’s get on the bus'],['ママ、だいすきです','👩❤️','Mama, I love you'],['パパ、みて ください！','👨👀','Papa, please look!']]}
 ];
 const EN = {
   animals:['dog','cat','bird','fish','rabbit','elephant','monkey','horse'],
@@ -63,15 +63,15 @@ const ALLW = THEMES.flatMap(t => t.words);
 const ALLP = PHRASES.flatMap(t => t.words);
 
 const TALK = {
-  animals:[['これは なに？','What is this?'],['いぬは なんて なく？','What does a dog say? (ワンワン)'],['どの どうぶつが すき？','Which animal do you like?']],
-  food:[['なにが たべたい？','What do you want to eat?'],['りんごは なにいろ？','What color is an apple?'],['おいしい？','Is it tasty?']],
-  colors:[['これは なにいろ？','What color is this?'],['あかい ものを さがそう','Let’s find something red.'],['なにいろが すき？','What’s your favorite color?']],
-  numbers:[['いくつ ある？','How many are there?'],['いっしょに かぞえよう','Let’s count together.'],['なんさい？','How old are you?']],
-  body:[['はなは どこ？','Where is your nose?'],['あたまを さわって','Touch your head.'],['てを あらおう','Let’s wash our hands.']],
-  oyatsu:[['おやつ、なにに する？','What snack do you want?'],['パンと ケーキ、どっち？','Bread or cake, which one?'],['ジュース、のむ？','Do you want some juice?']],
-  zoo:[['ライオンは なんて なく？','What does a lion say? (ガオー)'],['パンダは なにいろ？','What color is a panda?'],['どうぶつえんに いこう','Let’s go to the zoo.']],
-  mono:[['テレビを けして','Turn off the TV, please.'],['ボールを とって','Get the ball, please.'],['スプーンは どこ？','Where is the spoon?']],
-  vehicles:[['なにに のりたい？','What do you want to ride?'],['あれは なに？','What’s that? (point at one outside)'],['でんしゃ、みたね','We saw a train, didn’t we?']]
+  animals:[['これは なんですか？','What is this?'],['いぬは なんと なきますか？','What does a dog say? (ワンワン)'],['どの どうぶつが すきですか？','Which animal do you like?']],
+  food:[['なにが たべたいですか？','What do you want to eat?'],['りんごは なにいろですか？','What color is an apple?'],['おいしいですか？','Is it tasty?']],
+  colors:[['これは なにいろですか？','What color is this?'],['あかい ものを さがしましょう','Let’s find something red.'],['なにいろが すきですか？','What’s your favorite color?']],
+  numbers:[['いくつ ありますか？','How many are there?'],['いっしょに かぞえましょう','Let’s count together.'],['なんさいですか？','How old are you?']],
+  body:[['はなは どこですか？','Where is your nose?'],['あたまを さわって ください','Touch your head.'],['てを あらいましょう','Let’s wash our hands.']],
+  oyatsu:[['おやつは なにに しますか？','What snack do you want?'],['パンと ケーキ、どちらに しますか？','Bread or cake, which one?'],['ジュースを のみますか？','Do you want some juice?']],
+  zoo:[['ライオンは なんと なきますか？','What does a lion say? (ガオー)'],['パンダは なにいろですか？','What color is a panda?'],['どうぶつえんに いきましょう','Let’s go to the zoo.']],
+  mono:[['テレビを けして ください','Turn off the TV, please.'],['ボールを とって ください','Get the ball, please.'],['スプーンは どこですか？','Where is the spoon?']],
+  vehicles:[['なにに のりたいですか？','What do you want to ride?'],['あれは なんですか？','What’s that? (point at one outside)'],['でんしゃを みましたね','We saw a train, didn’t we?']]
 };
 
 const KANA_ROWS = ['あいうえお','かきくけこ','さしすせそ','たちつてと','なにぬねの','はひふへほ','まみむめも','や・ゆ・よ','らりるれろ','わ・・・を','ん・・・・'];
@@ -84,7 +84,7 @@ Object.assign(STROKES, {ア:2,イ:2,ウ:3,エ:3,オ:3,カ:2,キ:3,ク:2,ケ:3,�
 
 /* Fixed sentences the app speaks (instructions/feedback). Every string passed to say() must be
    a word/phrase above, a kana, a TALK line, or listed here, or it falls back to device speech. */
-const SPOKEN_EXTRA = ['おなじ ものを みつけよう','こんにちは','こんにちは！ いっしょに にほんごを べんきょう しよう。','どれに する？','なぞって かこう','なんて いう？','よく できました','よく できました！','よんで えらんでね','シール','ママ・パパと いってみよう','さわって きいてね','どれを かく？','カタカナ','ひらがな','もう すこし！','せんの うえを なぞってね'];
+const SPOKEN_EXTRA = ['おなじ ものを みつけましょう','こんにちは','こんにちは！ いっしょに にほんごを べんきょう しましょう。','どれに しますか？','なぞって かきましょう','なんと いいますか？','どれですか？','よく できました','よく できました！','よんで えらんで ください','シール','ママや パパと いって みましょう','さわって きいて ください','どれを かきますか？','カタカナ','ひらがな','もう すこしです！','せんの うえを なぞって ください','まねして いって みましょう'];
 
 /* The journey (home screen): an e-sugoroku train ride across Japan, Hokkaido to Okinawa. Each stop is one lesson:
    a topic id from THEMES/PHRASES, or a kana row to trace ('h0'..'h9' hiragana, 'k0'..'k9' katakana; row 9 = わをん). */
@@ -100,5 +100,5 @@ const JOURNEY = [
 ];
 const rowChars = id => { const rows = id[0] === 'h' ? KANA_ROWS : KATA_ROWS, r = +id.slice(1);
   return [...(r < 9 ? rows[r] : rows[9] + rows[10])].filter(c => c !== '・'); };
-JOURNEY.forEach(g => SPOKEN_EXTRA.push(g.name + ' に ついた！'));
-SPOKEN_EXTRA.push('ゴール！ おめでとう！', 'しゅっぱつ！');
+JOURNEY.forEach(g => SPOKEN_EXTRA.push(g.name + 'に つきました！'));
+SPOKEN_EXTRA.push('ゴール！ おめでとう ございます！', 'しゅっぱつ！');

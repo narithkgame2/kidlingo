@@ -7,12 +7,14 @@ Private context (who it's for, family preferences): `CLAUDE.local.md` (git-ignor
 ## Commands
 ```bash
 python3 scripts/build.py                     # src/ + audio/clips.json -> docs/ (GitHub Pages) and dist/kidlingo.html
-.venv/bin/python scripts/generate_audio.py   # make missing voice clips (Kokoro jf_alpha, offline); --force remakes all
+.venv/bin/python scripts/generate_audio.py   # make missing voice clips (VOICEVOX, offline); --force remakes all; --samples 8 2 … compares voices
 ```
 Always rebuild after editing anything in `src/`, `web/` or `audio/`. Never hand-edit `docs/` or `dist/`.
 No Node or ffmpeg needed: texts are listed with macOS's built-in JavaScript (`osascript`, `scripts/texts.py`) and
 clips are encoded with macOS `afconvert`. Voice setup once: `python3.12 -m venv .venv && .venv/bin/pip install -r
-requirements.txt`; the Kokoro model files come from `KOKORO_MODELS` (default: Speak Like a Leader's `tools/models`).
+requirements.txt`, and unzip the VOICEVOX engine (`voicevox_engine-macos-arm64-*.vvpp`, a zip, from
+github.com/VOICEVOX/voicevox_engine/releases) into `tools/voicevox_engine/` (git-ignored, ~1.9 GB). The generator starts
+and stops the engine itself. Kokoro (`--engine kokoro`) remains as a fallback.
 `tests/smoke.mjs` (Playwright) still works where Node is installed.
 
 ## Layout
@@ -35,6 +37,8 @@ requirements.txt`; the Kokoro model files come from `KOKORO_MODELS` (default: Sp
   next stop. Finishing a stop the first time sets `ARRIVE`: back on the map the train rides on, and entering a new
   region says "…に ついた！" and gives a region sticker. Free play (ことば / おはなし / かく / シール) sits above the
   map; finishing a topic or row there counts for the journey too (`stopDone`).
+- **Wide screens**: every screen sits in a centred `.page` (780px); the kana chart uses the full width and turns into
+  the classroom 五十音表 (11 columns あ…ん, top to bottom, right to left) at ≥820px. The top bar follows the page width.
 - **Screens** (`go(name, arg)`): `home`, `themes`, `phrases`, `lesson`, `kana`, `trace`, `stickers`, `parent`.
 - **Word lesson**: learn cards → 5× listen-and-tap → 4× read-and-tap → memory match → "say it to Mama/Papa".
 - **Phrase lesson**: learn cards → 4× なんていう？ → 3× listen → 2× read (answers in one wide column) → shadowing with
@@ -65,9 +69,18 @@ requirements.txt`; the Kokoro model files come from `KOKORO_MODELS` (default: Sp
   shared `player` so iPhones allow later playback.
 
 ## Audio
-- Voice: **Kokoro-82M** `jf_alpha` (Apache 2.0), speed 0.9, read by misaki (`pyopenjtalk` mode; misaki returns the
-  sounds followed by a pitch string of the same length, so keep the first half). `READ_AS` fixes single-kana particles
-  (は, へ). Even loudness per clip. Stored as base64 AAC; the player uses `data:audio/mp4`.
+- **Two voices** (Nick, 2026-10-01: "premium, not robotic", and "a coach asks first, like Speak Like a Leader"):
+  the **coach** (VOICEVOX 春日部つむぎ, style 8) speaks instructions, questions and praise (`SPOKEN_EXTRA`); the **model**
+  (VOICEVOX 四国めたん, style 2) speaks every word, phrase, kana and talk line. `scripts/texts.py` assigns the role.
+  Every lesson step starts with the coach (`say(['どれですか？', w.k])`, `['なぞって かきましょう', k]`, …).
+- VOICEVOX = free, offline, natural Japanese with real pitch accent. Its terms require a credit line per voice
+  ("VOICEVOX:名前"); the build injects it (`__VOICE_CREDIT__`, from `audio/clips.meta.json`) into parent mode.
+  Voices allowing commercial use were chosen on purpose (No.7, for example, is non-commercial only).
+- Readings: check `/audio_query` kana when adding text. `READ_AS` fixes particle misreadings (は, へ alone; はち).
+  Keep particles attached to their word (ほっかいどうに, not ほっかいどう に) or they get their own accent.
+- **Polite Japanese** (Nick, 2026-10-01): instructions, questions, phrases and talk lines use です/ます forms
+  (どれですか？, さわって きいて ください, おかえりなさい, ありがとう ございます). Fixed greetings stay as they are.
+- Even loudness per clip, 150 ms lead-in, stored as base64 AAC; the player uses `data:audio/mp4`.
 - Every string passed to `say()` must have a clip: add it to `data.js` (instructions in `SPOKEN_EXTRA`), run
   `generate_audio.py`, then `build.py` (it warns about missing clips). Device speech is only a last resort.
 - If sound fails, a red muted-speaker button appears in the header with diagnostics (hidden otherwise).

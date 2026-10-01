@@ -332,3 +332,17 @@ summary{font-weight:900;cursor:pointer}
 .mcard{background:color-mix(in srgb,var(--tc) 16%,var(--card))}
 .mcard .back .hm{color:color-mix(in srgb,var(--tc) 45%,var(--card))}
 .prompt-text{color:var(--ink)}
+
+/* ---------- wide screens (2026-10) ---------- */
+#app{max-width:1120px}
+.page{max-width:780px;margin:0 auto}
+.page.wide{max-width:none}
+/* the kana chart: on a phone, rows of 5 (あいうえお across); on a wide screen, the classroom 五十音表 (あいうえおひょう):
+   11 columns あ…ん, each read top to bottom, right to left. Same cells, only the flow changes. */
+@media (min-width:820px){
+  .page.wide .kgrid{max-width:none;grid-template-columns:none;grid-template-rows:repeat(5,minmax(0,1fr));grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);direction:rtl;gap:10px}
+  .page.wide .kcell{font-size:clamp(30px,3.4vw,44px)}
+  .page.wide .screen-title,.page.wide .seg,.page.wide > .sub{direction:ltr}
+}
+.bar{width:100%;max-width:780px;margin-inline:auto}
+body.wide .bar{max-width:none}

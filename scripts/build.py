@@ -25,7 +25,8 @@ if missing:
 page = (shell
         .replace("/*@@STYLES@@*/", (src / "styles.css").read_text(encoding="utf-8"))
         .replace("/*@@DATA@@*/", (src / "data.js").read_text(encoding="utf-8"))
-        .replace("/*@@APP@@*/", (src / "app.js").read_text(encoding="utf-8"))
+        .replace("/*@@APP@@*/", (src / "app.js").read_text(encoding="utf-8")
+                 .replace("__VOICE_CREDIT__", json.loads((ROOT / "audio" / "clips.meta.json").read_text(encoding="utf-8")).get("credit", "")))
         .replace("/*@@AUDIO@@*/", json.dumps(clips, ensure_ascii=False).replace("</", "<\\/")))
 build = hashlib.sha1(page.encode()).hexdigest()[:10]
 
