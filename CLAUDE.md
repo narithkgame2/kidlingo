@@ -76,6 +76,12 @@ and stops the engine itself. Kokoro (`--engine kokoro`) remains as a fallback.
 - VOICEVOX = free, offline, natural Japanese with real pitch accent. Its terms require a credit line per voice
   ("VOICEVOX:名前"); the build injects it (`__VOICE_CREDIT__`, from `audio/clips.meta.json`) into parent mode.
   Voices allowing commercial use were chosen on purpose (No.7, for example, is non-commercial only).
+- **Natural reading** (2026-10-01): the voice never reads the child's spaces (VOICEVOX reads each space as a comma, word
+  by word); `scripts/speak_as.json` gives the kanji version the voice reads (dictionary pitch accent) or `kana:` exact
+  accent notation (いってきます). `generate_audio.py --check` must show only intended differences (象 ゾオ/ゾウ, 八 fixes は).
+  Some kanji misread (黄色→オウショク, 何色→ナンショク, 何ですか→ナニ, 空きました→アキ, なぞって書き→ガキ): keep those in kana.
+  Coach: speed 1.0, intonation 1.18; model: speed 0.95, intonation 1.1; AAC 64 kbps. Never time-stretch clips in the
+  app (playbackRate ≠ 1 warbles); only the parent's Slow setting does.
 - Readings: check `/audio_query` kana when adding text. `READ_AS` fixes particle misreadings (は, へ alone; はち).
   Keep particles attached to their word (ほっかいどうに, not ほっかいどう に) or they get their own accent.
 - **Polite Japanese** (Nick, 2026-10-01): instructions, questions, phrases and talk lines use です/ます forms

@@ -1,6 +1,6 @@
 /* Kidlingo offline copy. The page is network-first (so updates arrive), with the saved copy when offline.
    Google Fonts (the kana and UI fonts) are saved the first time they load. Only kidlingo- caches are touched. */
-const V = 'kidlingo-a1d9439ae0', FONTS = 'kidlingo-fonts';
+const V = 'kidlingo-7b8d9c192e', FONTS = 'kidlingo-fonts';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k.startsWith('kidlingo-') && k !== V && k !== FONTS).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

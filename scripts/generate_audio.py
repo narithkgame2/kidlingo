@@ -31,11 +31,20 @@ KOKORO_MODELS = Path(os.environ.get("KOKORO_MODELS", Path.home() / "Desktop/Spea
 
 # Two voices, like a teacher and a model: the COACH asks and praises, the MODEL says the Japanese the child copies.
 # VOICEVOX style ids (compare with --samples); each needs its credit line in parent mode (VOICEVOX's terms).
-COACH = {"speaker": 8, "name": "春日部つむぎ", "speed": 0.95}
-MODEL = {"speaker": 2, "name": "四国めたん", "speed": 0.88}
+COACH = {"speaker": 8, "name": "春日部つむぎ", "speed": 1.0, "intonation": 1.18}
+MODEL = {"speaker": 2, "name": "四国めたん", "speed": 0.95, "intonation": 1.1}
 VOICE = {"speaker": MODEL["speaker"], "speed": MODEL["speed"]}      # used by --samples
 LEAD, TAIL = 0.15, 0.08          # seconds of quiet before / after (phones can clip the first sound)
-READ_AS = {"は": "ハ", "へ": "ヘ", "はち": "ハチ"}  # single kana that would be read as particles (wa, e)
+READ_AS = {"は": "ハ", "へ": "ヘ"}  # single kana that would be read as particles (wa, e)
+# What the voice reads when it differs from what the child sees (kanji = the dictionary's pitch accent). See --check.
+SPEAK_AS = {k: v for k, v in json.loads((Path(__file__).resolve().parent / "speak_as.json").read_text(encoding="utf-8")).items() if not k.startswith("_")}
+
+
+def spoken(text):
+    """The text as the voice should read it: the kanji version if there is one, without the spaces that young readers
+    need (VOICEVOX would read every space as a comma, word by word)."""
+    t = SPEAK_AS.get(text) or READ_AS.get(text) or text
+    return t.replace(" ", "").replace("\u3000", "")
 
 
 def even(a, sr):
@@ -51,7 +60,7 @@ def even(a, sr):
 class VoiceVox:
     def __init__(self, speaker, speed):
         self.speaker, self.speed, self.proc = speaker, speed, None
-        self.speeds = {}
+        self.speeds, self.intonation = {}, {}
         if not self.alive():
             run = VV_DIR / "run"
             if not run.exists():
@@ -78,8 +87,13 @@ class VoiceVox:
 
     def wav(self, text, speaker=None):
         sp = speaker if speaker is not None else self.speaker
-        q = json.loads(self.post("/audio_query", text=READ_AS.get(text, text), speaker=sp))
-        q.update(speedScale=self.speeds.get(sp, self.speed), prePhonemeLength=0.0, postPhonemeLength=0.05, outputSamplingRate=24000)
+        t = spoken(text)
+        if t.startswith("kana:"):      # exact accent notation for a fixed expression
+            q = json.loads(self.post("/audio_query", text=text, speaker=sp))
+            q["accent_phrases"] = json.loads(self.post("/accent_phrases", text=t[5:], speaker=sp, is_kana="true"))
+        else:
+            q = json.loads(self.post("/audio_query", text=t, speaker=sp))
+        q.update(speedScale=self.speeds.get(sp, self.speed), intonationScale=self.intonation.get(sp, 1.0), prePhonemeLength=0.0, postPhonemeLength=0.05, outputSamplingRate=24000)
         with tempfile.NamedTemporaryFile(suffix=".wav") as f:
             f.write(self.post("/synthesis", q, speaker=sp)); f.flush()
             a, sr = sf.read(f.name, dtype="float32")
@@ -113,7 +127,7 @@ def m4a(a, sr):
     with tempfile.TemporaryDirectory() as tmp:
         w, m = Path(tmp, "c.wav"), Path(tmp, "c.m4a")
         sf.write(w, a, sr)
-        subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "48000", str(w), str(m)], check=True)
+        subprocess.run(["afconvert", "-f", "m4af", "-d", "aac", "-b", "64000", str(w), str(m)], check=True)
         return m.read_bytes()
 
 
@@ -135,20 +149,42 @@ def samples(ids):
         v.close()
 
 
+def check():
+    """Every kanji reading must sound exactly like the hiragana the child sees. Prints any mismatch."""
+    import re
+    v = VoiceVox(MODEL["speaker"], MODEL["speed"]); bad = 0
+    norm = lambda k: re.sub(r"[^ァ-ヴー]", "", k)
+    try:
+        for t, _ in roles():
+            if t not in SPEAK_AS: continue
+            st = spoken(t)
+            a = st[5:] if st.startswith("kana:") else json.loads(v.post("/audio_query", text=st, speaker=2))["kana"]
+            b = json.loads(v.post("/audio_query", text=t.replace(" ", ""), speaker=2))["kana"]
+            if norm(a) != norm(b):
+                bad += 1; print(f"DIFFERENT  {t}  kanji:{a}  kana:{b}")
+    finally:
+        v.close()
+    print(f"checked {len(SPEAK_AS)} readings, {bad} different")
+
+
 def main():
+    if "--check" in sys.argv:
+        return check()
     if "--samples" in sys.argv:
         return samples([int(x) for x in sys.argv[sys.argv.index("--samples") + 1:]])
     force = "--force" in sys.argv
     only = sys.argv[sys.argv.index("--only") + 1:] if "--only" in sys.argv else None
     use_kokoro = "--engine" in sys.argv and sys.argv[sys.argv.index("--engine") + 1] == "kokoro"
-    engine_id = "kokoro|jf_alpha|0.9" if use_kokoro else f'voicevox|coach{COACH["speaker"]}@{COACH["speed"]}|model{MODEL["speaker"]}@{MODEL["speed"]}'
-    engine_id += f"|lead{LEAD}|v3"
+    engine_id = "kokoro|jf_alpha|0.9" if use_kokoro else f'voicevox|coach{COACH["speaker"]}@{COACH["speed"]}~{COACH["intonation"]}|model{MODEL["speaker"]}@{MODEL["speed"]}~{MODEL["intonation"]}'
+    engine_id += f"|lead{LEAD}|aac64|v4"
     meta = json.loads(META.read_text()) if META.exists() else {}
     clips = json.loads(OUT.read_text()) if OUT.exists() and meta.get("engine") == engine_id and not force else {}
     role = dict(roles()); wanted = list(role)
     todo = only if only else [t for t in wanted if t not in clips]
     v = Kokoro() if use_kokoro else VoiceVox(MODEL["speaker"], MODEL["speed"])
-    if not use_kokoro: v.speeds = {COACH["speaker"]: COACH["speed"], MODEL["speaker"]: MODEL["speed"]}
+    if not use_kokoro:
+        v.speeds = {COACH["speaker"]: COACH["speed"], MODEL["speaker"]: MODEL["speed"]}
+        v.intonation = {COACH["speaker"]: COACH["intonation"], MODEL["speaker"]: MODEL["intonation"]}
     try:
         for n, t in enumerate(todo, 1):
             a, sr = v.wav(t) if use_kokoro else v.wav(t, (COACH if role.get(t) == "coach" else MODEL)["speaker"])

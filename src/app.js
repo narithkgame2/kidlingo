@@ -446,8 +446,8 @@ function stTalk(){
           <p class="grown-up">Grown-up: let them listen, then say it back together.${canRecord() ? ' The microphone records them so they can hear themselves.' : ''} Tap <b>いえました！</b> when they say it. <br>Meaning: <b>${w.en}</b></p>
         </div>
         <div class="nav-row"><button class="btn" id="skip">つぎ ▶</button><button class="btn primary" id="said">いえました！</button></div>`);
-      say(j === 0 ? ['まねして いって みましょう', w.k] : w.k, Math.min(S.settings.rate, .75));
-      $('#hear').onclick = () => say(w.k, Math.min(S.settings.rate, .75));
+      say(j === 0 ? ['まねして いって みましょう', w.k] : w.k, S.settings.rate);
+      $('#hear').onclick = () => say(w.k, S.settings.rate);
       if(canRecord()) bindRecorder($('#mic'), $('#me'));
       $('#skip').onclick = () => { j++; drawP(); };
       $('#said').onclick = () => { stopRecorder(); sfx.ok(); rec(w.k, true); tally(true); addHana(1); j++; setTimeout(drawP, 450); };
