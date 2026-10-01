@@ -346,3 +346,7 @@ summary{font-weight:900;cursor:pointer}
 }
 .bar{width:100%;max-width:780px;margin-inline:auto}
 body.wide .bar{max-width:none}
+
+/* 🐢/🐇 voice speed in the top bar */
+.speed-btn{font-size:28px;line-height:1}
+.speed-btn.on{background:color-mix(in srgb,var(--leaf) 20%,var(--card));box-shadow:0 4px 0 color-mix(in srgb,var(--leaf) 55%,var(--card))}

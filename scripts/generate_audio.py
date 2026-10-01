@@ -31,8 +31,11 @@ KOKORO_MODELS = Path(os.environ.get("KOKORO_MODELS", Path.home() / "Desktop/Spea
 
 # Two voices, like a teacher and a model: the COACH asks and praises, the MODEL says the Japanese the child copies.
 # VOICEVOX style ids (compare with --samples); each needs its credit line in parent mode (VOICEVOX's terms).
-COACH = {"speaker": 8, "name": "春日部つむぎ", "speed": 1.0, "intonation": 1.18}
-MODEL = {"speaker": 2, "name": "四国めたん", "speed": 0.95, "intonation": 1.1}
+COACH = {"speaker": 8, "name": "春日部つむぎ", "speed": 0.92, "intonation": 1.08}
+MODEL = {"speaker": 2, "name": "四国めたん", "speed": 0.86, "intonation": 1.0}
+# The 🐢 setting: every model line also gets a real slow take (VOICEVOX speaks slower, with longer pauses), stored as
+# "slow:<text>". Never slow clips down in the browser instead: time-stretching sounds robotic.
+SLOW = {"speed": 0.6, "pause": 1.8}
 VOICE = {"speaker": MODEL["speaker"], "speed": MODEL["speed"]}      # used by --samples
 LEAD, TAIL = 0.15, 0.08          # seconds of quiet before / after (phones can clip the first sound)
 READ_AS = {"は": "ハ", "へ": "ヘ"}  # single kana that would be read as particles (wa, e)
@@ -85,7 +88,7 @@ class VoiceVox:
         req = urllib.request.Request(url, data=data, method="POST", headers={"Content-Type": "application/json"})
         return urllib.request.urlopen(req, timeout=120).read()
 
-    def wav(self, text, speaker=None):
+    def wav(self, text, speaker=None, slow=False):
         sp = speaker if speaker is not None else self.speaker
         t = spoken(text)
         if t.startswith("kana:"):      # exact accent notation for a fixed expression
@@ -93,7 +96,8 @@ class VoiceVox:
             q["accent_phrases"] = json.loads(self.post("/accent_phrases", text=t[5:], speaker=sp, is_kana="true"))
         else:
             q = json.loads(self.post("/audio_query", text=t, speaker=sp))
-        q.update(speedScale=self.speeds.get(sp, self.speed), intonationScale=self.intonation.get(sp, 1.0), prePhonemeLength=0.0, postPhonemeLength=0.05, outputSamplingRate=24000)
+        q.update(speedScale=SLOW["speed"] if slow else self.speeds.get(sp, self.speed), intonationScale=self.intonation.get(sp, 1.0),
+                 pauseLengthScale=SLOW["pause"] if slow else 1.0, prePhonemeLength=0.0, postPhonemeLength=0.05, outputSamplingRate=24000)
         with tempfile.NamedTemporaryFile(suffix=".wav") as f:
             f.write(self.post("/synthesis", q, speaker=sp)); f.flush()
             a, sr = sf.read(f.name, dtype="float32")
@@ -176,10 +180,11 @@ def main():
     only = sys.argv[sys.argv.index("--only") + 1:] if "--only" in sys.argv else None
     use_kokoro = "--engine" in sys.argv and sys.argv[sys.argv.index("--engine") + 1] == "kokoro"
     engine_id = "kokoro|jf_alpha|0.9" if use_kokoro else f'voicevox|coach{COACH["speaker"]}@{COACH["speed"]}~{COACH["intonation"]}|model{MODEL["speaker"]}@{MODEL["speed"]}~{MODEL["intonation"]}'
-    engine_id += f"|lead{LEAD}|aac64|v4"
+    engine_id += f'|slow{SLOW["speed"]}~{SLOW["pause"]}|lead{LEAD}|aac64|v5'
     meta = json.loads(META.read_text()) if META.exists() else {}
     clips = json.loads(OUT.read_text()) if OUT.exists() and meta.get("engine") == engine_id and not force else {}
-    role = dict(roles()); wanted = list(role)
+    role = dict(roles())
+    wanted = list(role) + ([f"slow:{t}" for t, r in role.items() if r == "model"] if not use_kokoro else [])
     todo = only if only else [t for t in wanted if t not in clips]
     v = Kokoro() if use_kokoro else VoiceVox(MODEL["speaker"], MODEL["speed"])
     if not use_kokoro:
@@ -187,7 +192,8 @@ def main():
         v.intonation = {COACH["speaker"]: COACH["intonation"], MODEL["speaker"]: MODEL["intonation"]}
     try:
         for n, t in enumerate(todo, 1):
-            a, sr = v.wav(t) if use_kokoro else v.wav(t, (COACH if role.get(t) == "coach" else MODEL)["speaker"])
+            base, slow = (t[5:], True) if t.startswith("slow:") else (t, False)
+            a, sr = v.wav(base) if use_kokoro else v.wav(base, (COACH if role.get(base) == "coach" else MODEL)["speaker"], slow)
             clips[t] = base64.b64encode(m4a(a, sr)).decode()
             print(f"{n}/{len(todo)} {t}")
     finally:
