@@ -1,0 +1,701 @@
+/* ---------- storage ---------- */
+const KEY = 'kidlingo.v1';
+const DEF_SET = {kana:true, rate:0.85, sfx:true};
+const fresh = () => ({hana:0, days:[], words:{}, kana:{}, themes:{}, stickers:{}, stars:{}, settings:{...DEF_SET}});
+function load(){ try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r) return Object.assign(fresh(), r, {settings:Object.assign({...DEF_SET}, r.settings||{})}); }catch(e){} return fresh(); }
+let S = load();
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+const fmt = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function markDay(){ const t = fmt(new Date()); if(!S.days.includes(t)){ S.days.push(t); save(); updateBar(); } }
+function streak(){ const set = new Set(S.days); const d = new Date(); if(!set.has(fmt(d))){ d.setDate(d.getDate()-1); if(!set.has(fmt(d))) return 0; } let n=0; while(set.has(fmt(d))){ n++; d.setDate(d.getDate()-1); } return n; }
+function rec(k, ok){ const w = S.words[k] || (S.words[k] = {ok:0, miss:0, streak:0}); if(ok){ w.ok++; w.streak++; } else { w.miss++; w.streak = 0; } save(); }
+const mastered = k => { const w = S.words[k]; return !!w && w.ok >= 3 && w.streak >= 2; };
+const doneIn = list => list.filter(k => S.kana[k]).length;
+const kanaDone = () => doneIn(KANA);
+const kataDone = () => doneIn(KATA);
+
+/* ---------- speech + sound ---------- */
+let jaVoice = null, voicesN = 0, lastErr = '', unlocked = false;
+const keep = [];
+function pickVoice(){
+  try{
+    const vs = speechSynthesis.getVoices(); voicesN = vs.length;
+    const ja = vs.filter(v => /^ja/i.test(v.lang) || /japan/i.test(v.name));
+    const pref = /Kyoko|O-ren|Otoya|Nanami|Haruka|Ayumi|Sayaka|Ichiro/i;
+    jaVoice = ja.find(v => v.localService && pref.test(v.name)) || ja.find(v => v.localService && !/Eddy|Flo|Grandma|Grandpa|Reed|Rocko|Sandy|Shelley/.test(v.name)) || ja.find(v => v.localService) || ja[0] || null;
+    if(voicesN && !ja.length) soundIssue('no-japanese-voice');
+  }catch(e){}
+}
+const hasTTS = 'speechSynthesis' in window;
+if(hasTTS){ pickVoice(); try{ speechSynthesis.addEventListener('voiceschanged', pickVoice); }catch(e){ speechSynthesis.onvoiceschanged = pickVoice; } }
+/* first touch anywhere unlocks speech + sound (needed on iPhone/iPad and some desktop apps) */
+const SILENT = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+function unlock(){
+  if(unlocked) return; unlocked = true;
+  /* iPhone/iPad: the audio element may play by itself later only if it played once inside a tap */
+  try{ if(player.paused){ player.src = SILENT; player.play().catch(() => {}); } }catch(e){}
+  try{ ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume && ac.resume(); }catch(e){}
+  if(hasTTS){ try{ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; keep.push(u); speechSynthesis.speak(u); }catch(e){} if(!jaVoice) pickVoice(); }
+}
+document.addEventListener('pointerdown', unlock, {capture:true});
+document.addEventListener('keydown', unlock, {capture:true});
+
+function makeUtt(t, rate, withVoice){
+  const u = new SpeechSynthesisUtterance(t); u.lang = 'ja-JP';
+  if(withVoice && jaVoice) u.voice = jaVoice;
+  u.rate = rate || S.settings.rate; u.pitch = 1.05; u.volume = 1;
+  return u;
+}
+/* recorded clips (Open JTalk, Mei voice) are the main audio; device speech is only a fallback */
+let CLIPS = {};
+try{ CLIPS = JSON.parse(document.getElementById('kl-audio').textContent); }catch(e){}
+const player = new Audio(); player.preload = 'auto';
+let qTok = 0;
+const rateFor = r => Math.max(.6, Math.min(1.25, r / .85));
+function say(text, rate){
+  const parts = [].concat(text), r = rate || S.settings.rate;
+  if(parts.every(p => CLIPS[p])) return playClips(parts, r);
+  return ttsSay(parts, r);
+}
+/* Audio that starts by itself waits a moment after the screen appears (LEAD), and there is a short pause between
+   parts (GAP), so a child hears "さわって きいてね" … "いぬ", not one run-on sound. A tap later plays at once. */
+const LEAD = 450, GAP = 380; let shownAt = 0;
+function playClips(parts, r){
+  const tok = ++qTok; let i = 0;
+  try{ player.pause(); }catch(e){}
+  try{ if(hasTTS && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel(); }catch(e){}
+  const step = () => {
+    if(tok !== qTok || i >= parts.length) return;
+    const t = parts[i++];
+    player.src = 'data:audio/mp4;base64,' + CLIPS[t];
+    player.defaultPlaybackRate = player.playbackRate = rateFor(r);
+    player.muted = false; player.volume = 1;
+    player.onended = () => setTimeout(step, GAP);
+    const p = player.play();
+    if(p && p.then) p.then(clearSoundIssue).catch(err => { lastErr = 'audio-element: ' + (err && err.name || err); webAudioClips(parts.slice(i-1), r, tok); });
+  };
+  const wait = LEAD - (performance.now() - shownAt);
+  if(wait > 0) setTimeout(step, wait); else step();
+}
+function webAudioClips(parts, r, tok){
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if(ac.state === 'suspended') ac.resume();
+    let i = 0;
+    const step = () => {
+      if(tok !== qTok || i >= parts.length) return;
+      const bin = atob(CLIPS[parts[i++]]), buf = new Uint8Array(bin.length);
+      for(let j=0;j<bin.length;j++) buf[j] = bin.charCodeAt(j);
+      ac.decodeAudioData(buf.buffer, ab => {
+        const src = ac.createBufferSource(); src.buffer = ab; src.playbackRate.value = rateFor(r);
+        src.connect(ac.destination); src.onended = () => setTimeout(step, GAP); src.start(); clearSoundIssue();
+      }, e => soundIssue('decode: ' + (e && e.message || e)));
+    };
+    step();
+  }catch(e){ soundIssue('webaudio: ' + (e && e.message || e)); }
+}
+function ttsSay(parts, rate){
+  if(!hasTTS){ soundIssue('no-speech-support'); return; }
+  const ss = speechSynthesis;
+  const run = () => {
+    try{ ss.resume(); }catch(e){}
+    parts.forEach((t, i) => {
+      const u = makeUtt(t, rate, true); let started = false;
+      u.onstart = () => { started = true; lastErr = ''; clearSoundIssue(); };
+      u.onerror = e => {
+        if(e.error === 'interrupted' || e.error === 'canceled') return;
+        lastErr = e.error || 'unknown';
+        if(u.voice){ const u2 = makeUtt(t, rate, false); u2.onerror = e2 => soundIssue(e2.error || 'unknown'); u2.onstart = () => clearSoundIssue(); keep.push(u2); ss.speak(u2); }
+        else soundIssue(lastErr);
+      };
+      keep.push(u); if(keep.length > 30) keep.splice(0, keep.length - 30);
+      ss.speak(u);
+      if(i === 0) setTimeout(() => { if(!started && !ss.speaking) soundIssue(lastErr || 'did-not-start'); }, 2500);
+    });
+  };
+  try{
+    if(ss.speaking || ss.pending){ ss.cancel(); setTimeout(run, 70); } else run();
+  }catch(e){ soundIssue(String(e && e.message || e)); }
+}
+function soundIssue(code){
+  lastErr = code;
+  const b = document.getElementById('soundWarn'); if(b) b.hidden = false;
+}
+function clearSoundIssue(){ const b = document.getElementById('soundWarn'); if(b) b.hidden = true; }
+function soundHelp(){
+  const o = modal(`<h2>Sound isn’t playing</h2>
+    <p>Kidlingo plays recorded Japanese audio.</p>
+    <ol class="help">
+      <li>Check the device isn’t muted and the volume is up. On iPhone/iPad, also turn off the silent switch.</li>
+      <li>Tap <b>Try again</b> below.</li>
+      <li>If it still fails, open this page in Safari or Chrome instead of inside another app.</li>
+      <li>No Japanese voice? Add one in the device’s text-to-speech or Spoken Content settings, then reload.</li>
+    </ol>
+    <p class="diag">Details for Claude: clips ${Object.keys(CLIPS).length} · ${hasTTS ? 'speech on' : 'no speech support'} · voices ${voicesN} · voice ${jaVoice ? jaVoice.name : 'none'} · last error ${lastErr || 'none'}</p>
+    <div class="row"><button class="btn" id="shClose">Close</button><button class="btn primary" id="shTry">Try again</button></div>`);
+  o.querySelector('#shClose').onclick = () => o.remove();
+  o.querySelector('#shTry').onclick = () => { pickVoice(); say('こんにちは'); };
+}
+let ac;
+function tone(freqs, type='sine', dur=.14, gap=.09, vol=.14){
+  if(!S.settings.sfx) return;
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if(ac.state === 'suspended') ac.resume();
+    const t0 = ac.currentTime;
+    freqs.forEach((f,i) => { const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.value = f; const s = t0 + i*gap;
+      g.gain.setValueAtTime(.0001, s); g.gain.exponentialRampToValueAtTime(vol, s+.01); g.gain.exponentialRampToValueAtTime(.0001, s+dur);
+      o.connect(g).connect(ac.destination); o.start(s); o.stop(s+dur+.02); });
+  }catch(e){}
+}
+const sfx = { ok:()=>tone([880,1318.5],'sine',.2,.09), no:()=>tone([240,190],'triangle',.18,.1,.12), win:()=>tone([659,784,988,1318.5],'sine',.26,.1), tap:()=>tone([700],'sine',.05,0,.05) };
+
+/* ---------- graphics ---------- */
+const HM = (() => { let d='', s=''; const R=44;
+  for(let i=0;i<=200;i++){ const th=i/200*Math.PI*2; const r=R*(.8+.2*Math.abs(Math.sin(4*th))); d+=(i?'L':'M')+(50+r*Math.cos(th)).toFixed(1)+' '+(50+r*Math.sin(th)).toFixed(1); }
+  for(let i=0;i<=120;i++){ const t=i/120; const th=-Math.PI/2+t*Math.PI*4.5; const r=3+26*t; s+=(i?'L':'M')+(50+r*Math.cos(th)).toFixed(1)+' '+(50+r*Math.sin(th)).toFixed(1); }
+  return {d,s}; })();
+const hanamaru = (px) => `<svg class="hm" width="${px}" height="${px}" viewBox="0 0 100 100" aria-hidden="true"><path d="${HM.d}" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linejoin="round"/><path d="${HM.s}" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round"/></svg>`;
+const hanko = () => `<svg class="hanko" viewBox="0 0 140 140" role="img" aria-label="よく できました"><circle cx="70" cy="70" r="62" fill="none" stroke="currentColor" stroke-width="7"/><circle cx="70" cy="70" r="52" fill="none" stroke="currentColor" stroke-width="2.5"/><text x="70" y="64" text-anchor="middle" font-size="31" font-weight="900" fill="currentColor">よく</text><text x="70" y="97" text-anchor="middle" font-size="21" font-weight="900" fill="currentColor">できました</text></svg>`;
+const SPK = `<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M3.5 9h4l5-4v14l-5-4h-4z" fill="currentColor"/><path d="M15.5 8.5a4.5 4.5 0 0 1 0 7M18 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
+const spk = (id, cls='') => `<button class="spk ${cls}" id="${id}" aria-label="きく">${SPK}</button>`;
+/* A phrase scene: people and things left to right; the one who says the phrase has the speech bubble.
+   sc = {s:[slots], sp:speaker index, t:time-of-day emoji, sub:{i, e} a small bubble for someone who already spoke}. */
+function scene(sc, size){
+  return `<span class="scn ${size}" aria-hidden="true">${sc.t ? `<span class="scn-t">${sc.t}</span>` : ''}${sc.s.map((e,i) =>
+    `<span class="scn-s${/^(➡️|⬅️)$/.test(e) ? ' arr' : ''}${i === sc.sp ? ' sp' : ''}">${i === sc.sp ? '<span class="bub"><i></i><i></i><i></i></span>' : ''}${sc.sub && sc.sub.i === i ? `<span class="bub sub">${sc.sub.e}</span>` : ''}<span class="emo">${e}</span></span>`).join('')}</span>`; }
+function pic(w, size){ const p = w.p;
+  if(w.sc) return scene(w.sc, size);
+  if(typeof p === 'string') return `<span class="emo ${size}" aria-hidden="true">${p}</span>`;
+  if(p.c) return `<span class="swatch ${size}" style="--sw:${p.c}" aria-hidden="true"></span>`;
+  return `<span class="dots ${size}" style="--cols:${Math.min(p.n,5)}" aria-hidden="true">${'<i></i>'.repeat(p.n)}</span>`; }
+
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const bump = el => !reduce && el.animate([{transform:'scale(1)'},{transform:'scale(1.05)'},{transform:'scale(1)'}],{duration:240});
+const shake = el => !reduce && el.animate([{transform:'translateX(0)'},{transform:'translateX(-10px)'},{transform:'translateX(10px)'},{transform:'translateX(-6px)'},{transform:'translateX(0)'}],{duration:340});
+function confetti(){
+  if(reduce) return;
+  const c = document.getElementById('fx'), x = c.getContext('2d'), dpr = devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+  c.width = W*dpr; c.height = H*dpr; x.setTransform(dpr,0,0,dpr,0,0);
+  const cols = ['#E0452B','#F2B233','#2E9E64','#3B82D6','#8A57C9','#F59AB5'];
+  const P = Array.from({length:70}, () => ({x:W/2, y:H*.42, vx:(Math.random()-.5)*13, vy:-Math.random()*11-4, r:Math.random()*7+5, a:Math.random()*6, va:(Math.random()-.5)*.3, c:cols[Math.floor(Math.random()*cols.length)]}));
+  let t = 0;
+  (function f(){ t++; x.clearRect(0,0,W,H);
+    P.forEach(p => { p.vy += .33; p.vx *= .99; p.x += p.vx; p.y += p.vy; p.a += p.va; x.save(); x.translate(p.x,p.y); x.rotate(p.a); x.fillStyle = p.c; x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); x.restore(); });
+    if(t < 120) requestAnimationFrame(f); else x.clearRect(0,0,W,H); })();
+}
+function toast(html){ const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = html; document.body.appendChild(t); setTimeout(() => t.classList.add('out'), 2400); setTimeout(() => t.remove(), 2900); }
+
+/* ---------- rewards ---------- */
+const STICKERS = [
+  ...ALL.map(t => ({id:'t_'+t.id, e:t.icon, label:t.name, test:() => (S.themes[t.id]||0) > 0})),
+  ...JOURNEY.map(g => ({id:'r_'+g.icon, e:g.icon, label:g.name, test:() => g.stops.every(stopDone)})),
+  {id:'k5', e:'🌱', label:'ひらがな 5', test:() => kanaDone() >= 5},
+  {id:'k20', e:'🌷', label:'ひらがな 20', test:() => kanaDone() >= 20},
+  {id:'k46', e:'🌸', label:'ひらがな ぜんぶ', test:() => kanaDone() >= 46},
+  {id:'kk10', e:'🍀', label:'カタカナ 10', test:() => kataDone() >= 10},
+  {id:'kk46', e:'🌻', label:'カタカナ ぜんぶ', test:() => kataDone() >= 46},
+  {id:'h30', e:'🎈', label:'はなまる 30', test:() => S.hana >= 30},
+  {id:'h100', e:'🚀', label:'はなまる 100', test:() => S.hana >= 100},
+  {id:'h250', e:'👑', label:'はなまる 250', test:() => S.hana >= 250},
+  {id:'s3', e:'🍡', label:'3 にち つづけて', test:() => streak() >= 3},
+  {id:'s7', e:'🎏', label:'7 にち つづけて', test:() => streak() >= 7}
+];
+function checkStickers(){
+  const got = STICKERS.filter(s => !S.stickers[s.id] && s.test());
+  if(!got.length) return;
+  got.forEach(s => S.stickers[s.id] = fmt(new Date())); save();
+  toast(`<span class="emo">${got[0].e}</span><span>シール ゲット！</span>`); sfx.win();
+}
+let L = null;
+function addHana(n){ S.hana += n; if(L) L.earned += n; markDay(); save(); updateBar(); checkStickers(); }
+function updateBar(){ document.getElementById('hanaN').textContent = S.hana; document.getElementById('streakN').textContent = streak(); }
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const view = $('#view');
+const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+function h(html){ view.innerHTML = html; view.scrollTop = 0; shownAt = performance.now(); }
+function bindGo(){ view.querySelectorAll('[data-go]').forEach(b => b.onclick = () => { sfx.tap(); go(b.dataset.go, b.dataset.arg); }); }
+function pickTargets(words, n){
+  const ranked = words.map(w => { const s = S.words[w.k]; const weight = s ? (s.streak >= 2 ? 1 : 3 + s.miss) : 2.5; return {w, key:Math.random()*weight}; })
+    .sort((a,b) => b.key - a.key).map(x => x.w);
+  const out = []; while(out.length < n) out.push(...ranked.slice(0, n - out.length)); return out;
+}
+function options(w){ return shuffle([w, ...shuffle(L.t.words.filter(x => x.k !== w.k)).slice(0,3)]); }
+
+/* ---------- screens ---------- */
+let current = 'home';
+const listFor = t => t && t.kind === 'phrase' ? 'phrases' : 'themes';
+const up = () => current === 'trace' ? (RS ? 'home' : 'kana') : current === 'lesson' ? (L && L.from === 'home' ? 'home' : listFor(L && L.t)) : 'home';
+function go(name, arg){
+  if(name !== 'trace') RS = null;
+  stopRecorder();
+  current = name;
+  $('#homeBtn').style.visibility = name === 'home' ? 'hidden' : 'visible';
+  ({home, themes:() => themes('word'), phrases:() => themes('phrase'), lesson, kana:kanaGrid, trace, stickers, parent})[name](arg);
+  updateBar();
+}
+
+/* ---------- the journey (home) ----------
+   An e-sugoroku train ride across Japan. Stops run top to bottom in regions (JOURNEY in data.js); the train waits at
+   the next stop, finished stops show 1-3 はなまる, later stops are locked. The big つぎ button always opens the next stop.
+   After a stop is finished for the first time (ARRIVE), the train rides on, and a new region gets "…に ついた！". */
+const STOPS = JOURNEY.flatMap((g, gi) => g.stops.map(id => ({id, gi})));
+const isRow = id => /^[hk]\d$/.test(id);
+const topicOf = id => ALL.find(t => t.id === id);
+function stopDone(id){ return isRow(id) ? rowChars(id).every(c => S.kana[c]) : (S.themes[id]||0) > 0; }
+const nextStop = () => STOPS.findIndex(x => !stopDone(x.id));
+const stopName = id => isRow(id) ? rowChars(id).join('') : topicOf(id).name;
+const stopIcon = id => isRow(id) ? `<span class="kana">${rowChars(id)[0]}</span>` : `<span class="emo">${topicOf(id).icon}</span>`;
+const stopKind = id => isRow(id) ? 'write' : topicOf(id).kind === 'phrase' ? 'talk' : 'words';
+function openStop(id){ sfx.tap(); if(isRow(id)) startRow(id); else go('lesson', id); }
+let ARRIVE = null;
+const XS = [50, 77, 50, 23];   // stops zig-zag across the board (percent of the width)
+
+function home(){
+  const nx = nextStop(), here = nx < 0 ? STOPS.length - 1 : nx;
+  let y = 96, stops = '', bands = '', pts = [], pos = [];
+  JOURNEY.forEach(g => {
+    const top = y; y += 146;
+    g.stops.forEach(id => {
+      const i = STOPS.findIndex(x => x.id === id), x = XS[i % 4], done = stopDone(id), st = done ? 'done' : i === nx ? 'now' : 'lock';
+      const n = done ? (S.stars[id] || 3) : 0;
+      pts.push([x, y]); pos.push([x, y]);
+      stops += `<button class="stop ${st} k-${stopKind(id)}" style="left:${x}%;top:${y}px" data-stop="${id}" aria-label="${i+1}. ${stopName(id)}">
+        <span class="disc">${stopIcon(id)}</span><span class="snum">${i+1}</span>
+        ${done ? `<span class="sstars">${[1,2,3].map(k => `<i class="${k <= n ? 'on' : ''}">${hanamaru(17)}</i>`).join('')}</span>` : `<span class="sname kana">${stopName(id)}</span>`}</button>`;
+      y += 108;
+    });
+    bands += `<div class="jband" style="top:${top}px;height:${y - top - 30}px;--bg:${g.bg}"><span class="jregion"><span class="emo">${g.icon}</span><span>${g.name}</span>${g.stops.every(stopDone) ? hanamaru(22) : ''}</span></div>`;
+    y += 10;
+  });
+  const H = y + 70, cut = nx < 0 ? pts.length : nx + 1;
+  const curve = list => list.slice(1).map((p, i) => { const q = list[i], my = (q[1] + p[1]) / 2; return `C${q[0]} ${my} ${p[0]} ${my} ${p[0]} ${p[1]}`; }).join('');
+  const line = list => `M50 40 L${pts[0][0]} ${pts[0][1]}` + curve(list);
+  const [tx, ty] = pos[ARRIVE ? ARRIVE.from : here];
+  const nxt = nx < 0 ? null : STOPS[nx].id;
+  h(`<div class="free" role="navigation" aria-label="あそぶ">
+      <button class="fp fp-words" data-go="themes"><span class="emo">🐶</span>ことば</button>
+      <button class="fp fp-talk" data-go="phrases"><span class="emo">🙏</span>おはなし</button>
+      <button class="fp fp-write" data-go="kana"><span class="kana">あ</span>かく</button>
+      <button class="fp fp-stick" data-go="stickers"><span class="emo">🎁</span>シール</button></div>
+    <div class="journey" id="journey" style="height:${H}px">
+      ${bands}
+      <svg class="jtrack" viewBox="0 0 100 ${H}" preserveAspectRatio="none" aria-hidden="true">
+        <path class="bed" d="${line(pts)}"/><path class="ties" d="${line(pts)}"/><path class="got" d="${line(pts.slice(0, cut))}"/></svg>
+      <div class="jstart"><span class="emo">🚉</span><span>しゅっぱつ</span></div>
+      ${stops}
+      <div class="jgoal" style="top:${H - 64}px"><span class="emo">🎌</span><span>ゴール</span></div>
+      <span class="train" id="train" style="left:${tx}%;top:${ty}px" aria-hidden="true">🚃</span>
+    </div>
+    <div class="gobar"><button class="btn primary go-next" id="goNext">${nxt ? `${stopIcon(nxt)}<span>つぎ</span>` : `<span class="emo">🎉</span><span>ゴール！</span>`}</button></div>`);
+  bindGo();
+  view.querySelectorAll('.stop').forEach(b => b.onclick = () => {
+    if(b.classList.contains('lock')){ sfx.no(); shake(b); return; }
+    openStop(b.dataset.stop); });
+  $('#goNext').onclick = () => nxt ? openStop(nxt) : (sfx.tap(), go('stickers'));
+  const centre = (i, smooth) => { const el = view.querySelector(`[data-stop="${STOPS[i].id}"]`); if(!el) return;
+    const d = el.getBoundingClientRect().top - view.getBoundingClientRect().top - view.clientHeight * .42;
+    view.scrollTo({top: view.scrollTop + d, behavior: smooth && !reduce ? 'smooth' : 'auto'}); };
+  centre(ARRIVE ? ARRIVE.from : here);
+  if(!ARRIVE) return;
+  const from = ARRIVE.from; ARRIVE = null;
+  const tr = $('#train'), now = view.querySelector('.stop.now');
+  if(now) now.classList.add('waiting');
+  setTimeout(() => {
+    if(!tr.isConnected) return;
+    const [x2, y2] = pos[here]; tr.style.left = x2 + '%'; tr.style.top = y2 + 'px'; tr.classList.add('ride'); centre(here, true);
+    setTimeout(() => {
+      if(!tr.isConnected) return; tr.classList.remove('ride');
+      if(now){ now.classList.remove('waiting'); now.classList.add('arrive'); }
+      if(nx < 0){ sfx.win(); say('ゴール！ おめでとう！'); confetti(); return; }
+      if(STOPS[nx].gi !== STOPS[from].gi){ const g = JOURNEY[STOPS[nx].gi];
+        sfx.win(); toast(`<span class="emo">${g.icon}</span><span>${g.name} に ついた！</span>`); say(g.name + ' に ついた！'); confetti(); setTimeout(checkStickers, 3100); }
+      else sfx.ok();
+    }, reduce ? 0 : 1400);
+  }, reduce ? 0 : 650);
+}
+
+function themes(kind){
+  const list = kind === 'phrase' ? PHRASES : THEMES;
+  h(`<h1 class="screen-title">${kind === 'phrase' ? 'おはなし' : 'ことば'}</h1><div class="theme-grid">${list.map(t => `
+    <button class="theme-card" data-go="lesson" data-arg="${t.id}" aria-label="${t.name}" style="--tc:var(${t.hue})">
+      <span class="emo m">${t.icon}</span><span class="theme-name">${t.name}</span>${t.kata ? '<span class="kata-badge kana">カタカナ</span>' : ''}
+      <span class="meter" aria-hidden="true">${t.words.map(w => `<i class="${mastered(w.k)?'on':''}"></i>`).join('')}</span>
+      ${(S.themes[t.id]||0) > 0 ? `<span class="done-mark">${hanamaru(34)}</span>` : ''}
+    </button>`).join('')}</div>`);
+  bindGo(); say('どれに する？');
+}
+
+function lesson(id){
+  const t = ALL.find(x => x.id === id);
+  const steps = [{type:'learn'}];
+  if(t.kind === 'phrase'){
+    pickTargets(t.words, 4).forEach(w => steps.push({type:'say', w}));
+    pickTargets(t.words, 3).forEach(w => steps.push({type:'listen', w}));
+    pickTargets(t.words, 2).forEach(w => steps.push({type:'read', w}));
+    steps.push({type:'talk'});
+  } else {
+    pickTargets(t.words, 5).forEach(w => steps.push({type:'listen', w}));
+    pickTargets(t.words, 4).forEach(w => steps.push({type:'read', w}));
+    steps.push({type:'match'}, {type:'talk'});
+  }
+  L = {t, steps, i:0, earned:0, ok:0, n:0, from:current === 'lesson' && L ? L.from : current, was:stopDone(id)};
+  markDay(); step();
+}
+const stepsBar = () => `<div class="steps" role="progressbar" aria-valuemin="1" aria-valuemax="${L.steps.length}" aria-valuenow="${L.i+1}">${L.steps.map((s,j) => `<i class="${j<L.i?'done':j===L.i?'now':''}"></i>`).join('')}</div>`;
+const tally = ok => { if(!L) return; L.n++; if(ok) L.ok++; };
+const starsFor = (ok, n) => !n ? 3 : ok/n >= .85 ? 3 : ok/n >= .5 ? 2 : 1;
+function next(){ if(current !== 'lesson') return; L.i++; if(L.i >= L.steps.length) finish(); else step(); }
+function step(){ const s = L.steps[L.i]; ({learn:stLearn, listen:stListen, read:stRead, match:stMatch, talk:stTalk, say:stSay})[s.type](s); }
+const isP = () => L.t.kind === 'phrase';
+
+/* phrase game: see the scene, pick what you say */
+function stSay(s){
+  const w = s.w, opts = shuffle([w, ...shuffle(L.t.words.filter(x => x.k !== w.k)).slice(0,2)]); let first = true, locked = false;
+  h(`${stepsBar()}<div class="prompt"><span class="prompt-text">なんて いう？</span></div>
+    <div class="scene">${pic(w,'xl')}</div>
+    <div class="say-opts">${opts.map((o,i) => `<div class="say-row"><button class="spk hint small" data-hear="${i}" aria-label="きく">${SPK}</button><button class="say-opt kana" data-i="${i}">${o.k}</button></div>`).join('')}</div>`);
+  say('なんて いう？');
+  view.querySelectorAll('[data-hear]').forEach(b => b.onclick = () => say(opts[+b.dataset.hear].k));
+  view.querySelectorAll('.say-opt').forEach(b => b.onclick = () => {
+    if(locked) return; const o = opts[+b.dataset.i];
+    if(o.k === w.k){ locked = true; b.classList.add('right'); sfx.ok(); say(w.k); if(first){ rec(w.k, true); tally(true); addHana(1); } setTimeout(next, 1500); }
+    else { b.classList.add('wrong'); b.disabled = true; sfx.no(); shake(b); if(first){ first = false; rec(w.k, false); tally(false); } }
+  });
+}
+
+function stLearn(){
+  const W = L.t.words; let j = 0;
+  const draw = (intro) => { const w = W[j];
+    h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">さわって きいてね</span></div>
+      <button class="learn-card" id="lc" aria-label="${w.k}">${pic(w,'xl')}${S.settings.kana || isP() ? `<span class="kana word${isP()?' ph':''}">${w.k}</span>` : ''}</button>
+      <div class="mean-row"><button class="qbtn" id="qm" aria-label="Show meaning" aria-expanded="false">?</button><span class="meaning" id="mean" hidden>${w.en}</span></div>
+      <div class="nav-row"><button class="btn" id="pv" aria-label="まえ" ${j===0?'disabled':''}>◀</button><span class="count">${j+1} / ${W.length}</span><button class="btn primary" id="nx" aria-label="つぎ">${j===W.length-1?'つぎへ ▶':'▶'}</button></div>`);
+    say(intro ? ['さわって きいてね', w.k] : w.k);
+    $('#lc').onclick = () => { say(w.k); bump($('#lc')); };
+    $('#sp').onclick = () => say(w.k);
+    $('#qm').onclick = () => { const m = $('#mean'); m.hidden = !m.hidden; $('#qm').setAttribute('aria-expanded', String(!m.hidden)); sfx.tap(); };
+    $('#pv').onclick = () => { if(j > 0){ j--; draw(); } };
+    $('#nx').onclick = () => { if(j < W.length-1){ j++; draw(); } else next(); };
+  };
+  draw(true);
+}
+
+function stListen(s){
+  const w = s.w, opts = options(w); let first = true, locked = false;
+  h(`${stepsBar()}<div class="prompt">${spk('sp')}<span class="prompt-text">どれかな？</span></div>
+    <div class="choices${isP() ? ' wide' : ''}">${opts.map((o,i) => `<button class="choice" data-i="${i}" aria-label="${o.k}">${pic(o,'l')}</button>`).join('')}</div>`);
+  say(w.k);
+  $('#sp').onclick = () => say(w.k);
+  view.querySelectorAll('.choice').forEach(b => b.onclick = () => {
+    if(locked) return; const o = opts[+b.dataset.i];
+    if(o.k === w.k){ locked = true; b.classList.add('right'); sfx.ok(); say(w.k); if(first){ rec(w.k, true); tally(true); addHana(1); } setTimeout(next, 1100); }
+    else { b.classList.add('wrong'); b.disabled = true; sfx.no(); shake(b); say(o.k); if(first){ first = false; rec(w.k, false); tally(false); } }
+  });
+}
+
+function stRead(s){
+  const w = s.w, opts = options(w); let first = true, hinted = false, locked = false;
+  h(`${stepsBar()}<div class="prompt">${spk('sp','hint')}<span class="kana read-word${isP()?' ph':''}">${w.k}</span></div>
+    <p class="sub">よんで えらんでね</p>
+    <div class="choices${isP() ? ' wide' : ''}">${opts.map((o,i) => `<button class="choice" data-i="${i}" aria-label="${o.k}">${pic(o,'l')}</button>`).join('')}</div>`);
+  say('よんで えらんでね');
+  $('#sp').onclick = () => { hinted = true; say(w.k); };
+  view.querySelectorAll('.choice').forEach(b => b.onclick = () => {
+    if(locked) return; const o = opts[+b.dataset.i];
+    if(o.k === w.k){ locked = true; b.classList.add('right'); sfx.ok(); say(w.k); if(first){ rec(w.k, !hinted); tally(!hinted); if(!hinted) addHana(1); } setTimeout(next, 1100); }
+    else { b.classList.add('wrong'); b.disabled = true; sfx.no(); shake(b); say(o.k); if(first){ first = false; rec(w.k, false); tally(false); } }
+  });
+}
+
+function stMatch(){
+  const ws = shuffle(L.t.words).slice(0,6);
+  const cards = shuffle([...ws.map(w => ({w, kind:'p'})), ...ws.map(w => ({w, kind:'k'}))]);
+  let open = [], matched = 0, busy = false;
+  h(`${stepsBar()}<div class="prompt"><span class="prompt-text">おなじ ものを みつけよう</span></div>
+    <div class="mgrid">${cards.map((c,i) => `<button class="mcard" data-i="${i}" aria-label="カード ${i+1}"><span class="back">${hanamaru(46)}</span><span class="face">${c.kind==='p' ? pic(c.w,'s') : `<span class="kana mword">${c.w.k}</span>`}</span></button>`).join('')}</div>`);
+  say('おなじ ものを みつけよう');
+  const els = [...view.querySelectorAll('.mcard')];
+  els.forEach((el,i) => el.onclick = () => {
+    if(busy || el.classList.contains('up')) return;
+    el.classList.add('up'); say(cards[i].w.k); open.push(i);
+    if(open.length === 2){
+      const [a,b] = open; open = [];
+      if(cards[a].w.k === cards[b].w.k){ els[a].classList.add('got'); els[b].classList.add('got'); sfx.ok(); matched++;
+        if(matched === ws.length){ addHana(2); setTimeout(next, 1200); } }
+      else { busy = true; setTimeout(() => { els[a].classList.remove('up'); els[b].classList.remove('up'); busy = false; }, 1000); }
+    }
+  });
+}
+
+function stTalk(){
+  const ws = shuffle(L.t.words).slice(0,3); let j = 0;
+  if(isP()){
+    const drawP = () => { if(j >= ws.length) return next(); const w = ws[j];
+      h(`${stepsBar()}<div class="prompt"><span class="prompt-text">まねして いってみよう！</span></div>
+        <div class="talk-card">${pic(w,'xl')}<span class="kana word ph">${w.k}</span>
+          <div class="rec-row"><button class="btn round" id="hear" aria-label="きく">${SPK}</button>${canRecord() ? `<button class="btn round mic" id="mic" aria-label="ろくおん">${MIC}</button><button class="btn round me" id="me" aria-label="じぶんの こえ" hidden>${EAR}</button>` : ''}</div>
+          <p class="grown-up">Grown-up: let them listen, then say it back together.${canRecord() ? ' The microphone records them so they can hear themselves.' : ''} Tap <b>いえた！</b> when they say it. <br>Meaning: <b>${w.en}</b></p>
+        </div>
+        <div class="nav-row"><button class="btn" id="skip">つぎ ▶</button><button class="btn primary" id="said">いえた！</button></div>`);
+      say(w.k, Math.min(S.settings.rate, .75));
+      $('#hear').onclick = () => say(w.k, Math.min(S.settings.rate, .75));
+      if(canRecord()) bindRecorder($('#mic'), $('#me'));
+      $('#skip').onclick = () => { j++; drawP(); };
+      $('#said').onclick = () => { stopRecorder(); sfx.ok(); rec(w.k, true); tally(true); addHana(1); j++; setTimeout(drawP, 450); };
+      $('#skip').onclick = () => { stopRecorder(); j++; drawP(); };
+    };
+    return drawP();
+  }
+  const draw = () => { if(j >= ws.length) return next(); const w = ws[j];
+    h(`${stepsBar()}<div class="prompt"><span class="prompt-text">ママ・パパと いってみよう！</span></div>
+      <div class="talk-card">${pic(w,'xl')}
+        <p class="grown-up">Grown-up: point and ask <b class="kana">これは なに？</b> Tap <b>いえた！</b> when they say it in Japanese.<br>Answer: <b class="kana">${w.k}</b> <button class="linkish" id="hear">hear it</button></p>
+      </div>
+      <div class="nav-row"><button class="btn" id="skip">つぎ ▶</button><button class="btn primary" id="said">いえた！</button></div>`);
+    $('#hear').onclick = () => say(w.k);
+    $('#skip').onclick = () => { j++; draw(); };
+    $('#said').onclick = () => { sfx.ok(); rec(w.k, true); tally(true); addHana(1); j++; setTimeout(draw, 450); };
+  };
+  say('ママ・パパと いってみよう'); draw();
+}
+
+function finish(){
+  const t = L.t; S.themes[t.id] = (S.themes[t.id]||0) + 1;
+  finishScreen(t.id, starsFor(L.ok, L.n), L.earned, L.was, () => lesson(t.id));
+}
+/* The end of any journey stop (a topic lesson or a kana row): hanko, 1-3 はなまる, then back to the map, where the
+   train moves on if this stop was done for the first time. */
+function finishScreen(id, stars, earned, was, again){
+  S.stars[id] = Math.max(S.stars[id] || 0, stars); save();
+  const i = STOPS.findIndex(x => x.id === id);
+  if(!was && i >= 0) ARRIVE = {from:i};
+  h(`<div class="finish"><div class="stamp-wrap">${hanko()}</div>
+    <div class="fstars">${[1,2,3].map(n => `<span class="${n <= stars ? 'on' : ''}" style="--d:${n*.18}s">${hanamaru(54)}</span>`).join('')}</div>
+    <p class="earned">${hanamaru(30)}<span>+${earned}</span></p>
+    <div class="nav-row center"><button class="btn" id="again">もういちど</button><button class="btn primary" id="onward">つぎ ▶</button></div></div>`);
+  $('#again').onclick = again; $('#onward').onclick = () => { sfx.tap(); go('home'); };
+  sfx.win(); say('よく できました！'); confetti(); setTimeout(checkStickers, 1500);
+}
+
+let script = 'hira';
+function kanaGrid(arg){
+  if(arg) script = arg;
+  const kata = script === 'kata', rows = kata ? KATA_ROWS : KANA_ROWS, list = kata ? KATA : KANA;
+  h(`<h1 class="screen-title">かく</h1>
+    <div class="seg" role="tablist"><button role="tab" class="seg-btn ${kata?'':'on'}" data-s="hira" aria-selected="${!kata}">ひらがな</button><button role="tab" class="seg-btn ${kata?'on':''}" data-s="kata" aria-selected="${kata}">カタカナ</button></div>
+    <p class="sub">${doneIn(list)} / 46</p>
+    <div class="kgrid">${rows.map(r => [...r].map(c => c === '・' ? '<span class="kcell blank"></span>' :
+      `<button class="kcell ${S.kana[c]?'done':''}" data-k="${c}" aria-label="${c}"><span class="kana">${c}</span>${S.kana[c] ? `<span class="kmark">${hanamaru(20)}</span>` : ''}</button>`).join('')).join('')}</div>`);
+  view.querySelectorAll('.kcell[data-k]').forEach(b => b.onclick = () => { sfx.tap(); go('trace', b.dataset.k); });
+  view.querySelectorAll('.seg-btn').forEach(b => b.onclick = () => { sfx.tap(); go('kana', b.dataset.s); });
+  say(kata ? 'カタカナ' : 'ひらがな');
+}
+
+/* A kana row on the journey: trace each kana of the row in turn (RS = the row session). */
+let RS = null;
+function startRow(id){ RS = {id, chars:rowChars(id), j:0, fails:0, earned:0, was:stopDone(id)}; go('trace', RS.chars[0]); }
+function finishRow(){ const r = RS; RS = null; current = 'done';
+  finishScreen(r.id, r.fails === 0 ? 3 : r.fails <= 2 ? 2 : 1, r.earned, r.was, () => startRow(r.id)); }
+async function trace(k){
+  markDay();
+  if(RS && RS.chars[RS.j] !== k) RS = null;
+  const LIST = KATA.includes(k) ? KATA : KANA; script = LIST === KATA ? 'kata' : 'hira';
+  const idx = LIST.indexOf(k), n = STROKES[k] || 1;
+  h(`${RS ? `<div class="row-dots" aria-label="${RS.j+1} / ${RS.chars.length}">${RS.chars.map((c,i) => `<span class="kana${i < RS.j ? ' done' : i === RS.j ? ' now' : ''}">${c}</span>`).join('')}</div>` : ''}
+    <div class="trace-top"><button class="icon-btn" id="tp" aria-label="まえ" ${idx===0||RS?'disabled':''}>◀</button><span class="prompt-text">なぞって かこう</span><button class="icon-btn" id="tn" aria-label="つぎ" ${idx===LIST.length-1||RS?'disabled':''}>▶</button></div>
+    <div class="masu-wrap" id="mw"><canvas id="masu" aria-label="${k} を なぞる"></canvas><div class="tstamp" id="tstamp" hidden>${hanko()}</div></div>
+    <div class="stroke-row" id="srow"><span class="kana">${n}</span><span>かいで かこう</span><span class="sdots" id="sdots">${'<i></i>'.repeat(n)}</span></div>
+    ${PAIR[k] ? `<p class="pair">ひらがな <button class="pair-chip kana" id="pairBtn">${PAIR[k]}</button> と おなじ おと</p>` : ''}
+    <div class="nav-row"><button class="btn round" id="tsay" aria-label="きく">${SPK}</button><button class="btn" id="tclear">けす</button><button class="btn primary" id="tdone">できた</button></div>`);
+  $('#tp').onclick = () => go('trace', LIST[idx-1]);
+  if(PAIR[k]) $('#pairBtn').onclick = () => say(PAIR[k]);
+  $('#tn').onclick = () => go('trace', LIST[idx+1]);
+  say(k);
+
+  const cv = $('#masu'), size = Math.floor($('#mw').getBoundingClientRect().width), dpr = devicePixelRatio || 1;
+  cv.width = size*dpr; cv.height = size*dpr; cv.style.width = cv.style.height = size + 'px';
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  try{ await document.fonts.load(`600 ${Math.round(size*.78)}px "Klee One"`, k); }catch(e){}
+  if(!cv.isConnected) return;
+
+  const glyph = (c, s, color, sw) => {
+    c.font = `600 ${s*.78}px "Klee One", "Hiragino Mincho ProN", serif`; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    const m = c.measureText(k), asc = m.actualBoundingBoxAscent || s*.39, desc = m.actualBoundingBoxDescent || s*.05;
+    const x = s/2 + ((m.actualBoundingBoxLeft||0) - (m.actualBoundingBoxRight||0))/2, y = s/2 + (asc - desc)/2;
+    c.fillStyle = color; c.fillText(k, x, y);
+    if(sw){ c.lineWidth = sw; c.lineJoin = 'round'; c.strokeStyle = color; c.strokeText(k, x, y); }
+  };
+  let strokes = [], cur = null, passed = false;
+  const paint = (c, s, lw, color) => { c.strokeStyle = color; c.fillStyle = color; c.lineWidth = lw; c.lineCap = 'round'; c.lineJoin = 'round';
+    strokes.forEach(st => { if(st.length === 1){ c.beginPath(); c.arc(st[0][0]*s, st[0][1]*s, lw/2, 0, Math.PI*2); c.fill(); return; }
+      c.beginPath(); c.moveTo(st[0][0]*s, st[0][1]*s); st.forEach(p => c.lineTo(p[0]*s, p[1]*s)); c.stroke(); }); };
+  const redraw = () => {
+    ctx.clearRect(0,0,size,size); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,size,size);
+    ctx.strokeStyle = '#D6E1EE'; ctx.lineWidth = 2; ctx.setLineDash([8,8]);
+    ctx.beginPath(); ctx.moveTo(size/2,0); ctx.lineTo(size/2,size); ctx.moveTo(0,size/2); ctx.lineTo(size,size/2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle = '#B9C8DA'; ctx.lineWidth = 4; ctx.strokeRect(2,2,size-4,size-4);
+    glyph(ctx, size, '#C9D6E6');
+    paint(ctx, size, size*.065, '#1E2A45');
+  };
+  const dots = () => { const d = [...$('#sdots').children]; d.forEach((el,i) => el.classList.toggle('on', i < strokes.length)); $('#srow').classList.toggle('over', strokes.length > n); };
+  redraw();
+  const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX-r.left)/r.width, (e.clientY-r.top)/r.height]; };
+  cv.onpointerdown = e => { if(passed) return; e.preventDefault(); try{ cv.setPointerCapture(e.pointerId); }catch(_){} cur = [pt(e)]; strokes.push(cur); redraw(); dots(); };
+  cv.onpointermove = e => { if(!cur) return; cur.push(pt(e)); redraw(); };
+  cv.onpointerup = cv.onpointercancel = () => { cur = null; };
+
+  const check = () => {
+    const N = 72, mk = () => { const c = document.createElement('canvas'); c.width = c.height = N; return c.getContext('2d', {willReadFrequently:true}); };
+    const g = mk(), z = mk(), thick = mk(), thin = mk();
+    glyph(g, N, '#000'); glyph(z, N, '#000', N*.1);
+    paint(thick, N, N*.14, '#000'); paint(thin, N, N*.05, '#000');
+    const A = c => c.getImageData(0,0,N,N).data, gd = A(g), zd = A(z), td = A(thick), ud = A(thin);
+    let gc=0, cov=0, uc=0, inz=0;
+    for(let i=3;i<gd.length;i+=4){ if(gd[i] > 100){ gc++; if(td[i] > 60) cov++; } if(ud[i] > 100){ uc++; if(zd[i] > 60) inz++; } }
+    return {coverage: gc ? cov/gc : 0, precision: uc ? inz/uc : 0};
+  };
+  $('#tsay').onclick = () => say(k);
+  $('#tclear').onclick = () => { strokes = []; passed = false; $('#tstamp').hidden = true; resetDone(); redraw(); dots(); };
+  const resetDone = () => { const b = $('#tdone'); b.textContent = 'できた'; b.onclick = done; };
+  const done = () => {
+    if(!strokes.length){ say('なぞって かこう'); shake(cv); return; }
+    const r = check();
+    if(r.coverage >= .7 && r.precision >= .78){
+      passed = true; const first = !S.kana[k]; S.kana[k] = (S.kana[k]||0) + 1; save();
+      $('#tstamp').hidden = false; sfx.win(); say('よく できました'); confetti(); addHana(first ? 2 : 1); if(RS) RS.earned += first ? 2 : 1;
+      const b = $('#tdone');
+      if(RS){ const last = RS.j >= RS.chars.length-1; b.textContent = last ? 'できた！' : 'つぎ ▶';
+        b.onclick = () => { if(last) return finishRow(); RS.j++; go('trace', RS.chars[RS.j]); }; }
+      else { b.textContent = idx < LIST.length-1 ? 'つぎ ▶' : 'おわり';
+        b.onclick = () => idx < LIST.length-1 ? go('trace', LIST[idx+1]) : go('kana'); }
+    } else { if(RS) RS.fails++; sfx.no(); shake(cv); say(r.coverage < .7 ? 'もう すこし！' : 'せんの うえを なぞってね'); }
+  };
+  resetDone();
+}
+
+function stickers(){
+  const n = STICKERS.filter(s => S.stickers[s.id]).length;
+  h(`<h1 class="screen-title">シール</h1><p class="sub">${n} / ${STICKERS.length}</p>
+    <div class="sgrid">${STICKERS.map(s => `<div class="sticker ${S.stickers[s.id]?'':'locked'}"><span class="emo" aria-hidden="true">${s.e}</span><small>${s.label}</small></div>`).join('')}</div>`);
+  say('シール');
+}
+
+/* ---------- hear yourself ----------
+   In phrase practice the child can record their try (up to 6 s) and hear it right away, then the model again. */
+const MIC = '<span class="emo">🎤</span>', EAR = '<span class="emo">👂</span>';
+let REC = null;
+const canRecord = () => !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+function stopRecorder(){ if(!REC) return; clearTimeout(REC.t); try{ if(REC.mr.state !== 'inactive') REC.mr.stop(); }catch(e){} }
+function bindRecorder(mic, me){ let url = null; const out = new Audio();
+  const play = () => { if(!url) return; try{ player.pause(); }catch(e){} out.src = url; out.play().catch(() => {}); bump(me); };
+  me.onclick = play;
+  mic.onclick = async () => {
+    if(REC){ stopRecorder(); return; }
+    try{ player.pause(); }catch(e){}
+    let stream; try{ stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true}}); }catch(e){ sfx.no(); shake(mic); return; }
+    if(!mic.isConnected){ stream.getTracks().forEach(t => t.stop()); return; }
+    const chunks = [], mr = new MediaRecorder(stream);
+    REC = {mr, t:setTimeout(stopRecorder, 6000)}; mic.classList.add('on');
+    mr.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+    mr.onstop = () => { stream.getTracks().forEach(t => t.stop()); REC = null; mic.classList.remove('on');
+      if(!mic.isConnected || !chunks.length) return;
+      if(url) URL.revokeObjectURL(url); url = URL.createObjectURL(new Blob(chunks, {type:mr.mimeType || 'audio/mp4'}));
+      me.hidden = false; play(); };
+    mr.start(); sfx.tap();
+  };
+}
+
+/* ---------- grown-ups ---------- */
+function modal(html){ const o = document.createElement('div'); o.className = 'overlay'; o.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`; document.body.appendChild(o); return o; }
+function openGate(){
+  const a = 11 + Math.floor(Math.random()*9), b = 3 + Math.floor(Math.random()*4);
+  const o = modal(`<h2>For grown-ups</h2><p>Answer to open settings and progress.</p><label class="gate-q" for="gateIn">${a} × ${b} =</label>
+    <input id="gateIn" inputmode="numeric" autocomplete="off"><p class="warn" id="gateErr" hidden>Not quite. Try again.</p>
+    <div class="row"><button class="btn" id="gX">Cancel</button><button class="btn primary" id="gOK">Open</button></div>`);
+  const inp = o.querySelector('#gateIn'); setTimeout(() => inp.focus(), 50);
+  const ok = () => { if(parseInt(inp.value,10) === a*b){ o.remove(); go('parent'); } else { o.querySelector('#gateErr').hidden = false; inp.value = ''; inp.focus(); } };
+  o.querySelector('#gOK').onclick = ok; inp.onkeydown = e => { if(e.key === 'Enter') ok(); };
+  o.querySelector('#gX').onclick = () => o.remove();
+  o.onclick = e => { if(e.target === o) o.remove(); };
+}
+
+function parent(){
+  const learned = ALLW.filter(w => mastered(w.k)).length;
+  const learnedP = ALLP.filter(w => mastered(w.k)).length;
+  const topicRow = t => { const m = t.words.filter(w => mastered(w.k)).length; return `<div class="trow"><span class="emo">${t.icon}</span><span class="kana" style="font-size:18px">${t.name}</span><div class="bar-track"><div class="bar-fill" style="width:${m/t.words.length*100}%"></div></div><small>${m}/${t.words.length} · ${S.themes[t.id]||0} lessons</small></div>`; };
+  const weak = [...ALLW, ...ALLP].filter(w => { const s = S.words[w.k]; return s && s.miss > 0 && s.streak < 2; }).sort((a,b) => S.words[b.k].miss - S.words[a.k].miss).slice(0,14);
+  h(`<div class="parent">
+    <h1>Grown-ups</h1>
+    <p class="lede">Progress is saved in this browser on this device only.</p>
+    <div class="stats">
+      <div class="stat"><b>${S.hana}</b><span>Hanamaru</span></div>
+      <div class="stat"><b>${streak()}</b><span>Day streak</span></div>
+      <div class="stat"><b>${learned}<small style="font-size:16px;color:var(--muted)">/${ALLW.length}</small></b><span>Words learned</span></div>
+      <div class="stat"><b>${learnedP}<small style="font-size:16px;color:var(--muted)">/${ALLP.length}</small></b><span>Phrases learned</span></div>
+      <div class="stat"><b>${kanaDone()}<small style="font-size:16px;color:var(--muted)">/46</small></b><span>Hiragana traced</span></div>
+      <div class="stat"><b>${kataDone()}<small style="font-size:16px;color:var(--muted)">/46</small></b><span>Katakana traced</span></div>
+      <div class="stat"><b>${S.days.length}</b><span>Days practiced</span></div>
+      <div class="stat"><b>${STOPS.filter(x => stopDone(x.id)).length}<small style="font-size:16px;color:var(--muted)">/${STOPS.length}</small></b><span>Journey stops</span></div>
+    </div>
+    <p class="note">A word counts as learned after 3 correct answers, with the last 2 in a row. Answers after using the hint button don’t count.</p>
+
+    <h2>Word topics</h2>
+    ${THEMES.map(topicRow).join('')}
+    <h2>Phrase topics</h2>
+    ${PHRASES.map(topicRow).join('')}
+
+    <h2>Needs practice</h2>
+    ${weak.length ? `<div class="chips">${weak.map(w => `<button class="chip kana" data-say="${w.k}">${w.k} <small>✕${S.words[w.k].miss}</small></button>`).join('')}</div><p class="note">Tap a word to hear it. Try using these at home this week.</p>`
+      : `<p class="empty">Nothing yet. Words show up here after your child misses them in a game.</p>`}
+
+    <h2>Word and phrase list</h2>
+    <p class="note">Everything in the app with romaji and meaning, for any grown-up helping out. Your child sees only Japanese, pictures, and the meaning when they tap ? on a learning card.</p>
+    ${ALL.map(t => `<details><summary>${t.icon} <span class="kana">${t.name}</span> <small class="note">${t.kind === 'phrase' ? 'phrases' : 'words'}</small></summary>${t.words.map(w => `<div class="phrase"><button class="chip" data-say="${w.k}" aria-label="Hear">▶</button><span><span class="kana">${w.k}</span> <span class="ro">${romaji(w.k)}</span></span><span class="en">${w.en}</span></div>`).join('')}</details>`).join('')}
+
+    <h2>Talk together</h2>
+    <p class="note">The app teaches words. Hearing and using them with you is what turns them into speech. A few lines to use during the day:</p>
+    ${THEMES.map(t => `<details><summary>${t.icon} <span class="kana">${t.name}</span></summary>${TALK[t.id].map(([jp,en]) => `<div class="phrase"><button class="chip" data-say="${jp}" aria-label="Hear">▶</button><span class="kana">${jp}</span><span class="en">${en}</span></div>`).join('')}</details>`).join('')}
+
+    <h2>Settings</h2>
+    <div class="set"><label for="setKana">Show hiragana under pictures</label><input type="checkbox" id="setKana" ${S.settings.kana?'checked':''}></div>
+    <div class="set"><label for="setRate">Voice speed</label><select id="setRate"><option value="0.65">Slow</option><option value="0.85">Normal</option><option value="1">Natural</option></select></div>
+    <div class="set"><label for="setSfx">Sound effects</label><input type="checkbox" id="setSfx" ${S.settings.sfx?'checked':''}></div>
+    <div class="set"><span>Voice: recorded Japanese audio (Kokoro-82M, voice jf_alpha, Apache 2.0). Anything without a recording uses the device voice.</span><button class="small-btn" id="testV">Test voice</button></div>
+    <div class="set"><span>Progress file: move progress to another device, or keep a copy</span><span class="bk"><button class="small-btn" id="bkSave">Save</button><label class="small-btn">Load<input type="file" id="bkLoad" accept=".json,application/json" hidden></label></span></div>
+    <div class="set"><span>Reset all progress</span><button class="small-btn danger" id="reset">Reset</button></div>
+  </div>`);
+  view.querySelectorAll('[data-say]').forEach(b => b.onclick = () => say(b.dataset.say));
+  const rs = $('#setRate'); rs.value = String(S.settings.rate); if(!rs.value) rs.value = '0.85';
+  rs.onchange = () => { S.settings.rate = parseFloat(rs.value); save(); say('こんにちは'); };
+  $('#setKana').onchange = e => { S.settings.kana = e.target.checked; save(); };
+  $('#setSfx').onchange = e => { S.settings.sfx = e.target.checked; save(); sfx.ok(); };
+  $('#testV').onclick = () => say('こんにちは！ いっしょに にほんごを べんきょう しよう。');
+  /* backup: progress is per device, so a file moves it (share sheet on iPhone/iPad, a download elsewhere) */
+  const dl = f => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); };
+  $('#bkSave').onclick = () => { const f = new File([JSON.stringify({app:'kidlingo', v:1, at:new Date().toISOString(), state:S})], `kidlingo-progress-${fmt(new Date())}.json`, {type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[f]})) navigator.share({files:[f], title:'Kidlingo progress'}).catch(e => { if(!e || e.name !== 'AbortError') dl(f); }); else dl(f); };
+  $('#bkLoad').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return; let d = null; try{ d = JSON.parse(await f.text()); }catch(_){}
+    if(!d || d.app !== 'kidlingo' || !d.state){ toast('<span>That isn’t a Kidlingo progress file</span>'); return; }
+    const when = new Date(d.at).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
+    const o = modal(`<h2>Load progress?</h2><p>This replaces the progress on this device with the file from ${when}.</p><div class="row"><button class="btn" id="bkNo">Cancel</button><button class="btn primary" id="bkYes">Load</button></div>`);
+    o.querySelector('#bkNo').onclick = () => o.remove();
+    o.querySelector('#bkYes').onclick = () => { o.remove(); S = Object.assign(fresh(), d.state, {settings:Object.assign({...DEF_SET}, d.state.settings||{})}); save(); go('parent'); toast('<span>Progress loaded</span>'); }; };
+  $('#soundInfo') && ($('#soundInfo').onclick = soundHelp);
+  let armed = false;
+  $('#reset').onclick = e => { const b = e.currentTarget;
+    if(!armed){ armed = true; b.textContent = 'Tap again to erase everything'; setTimeout(() => { armed = false; if(b.isConnected) b.textContent = 'Reset'; }, 4000); return; }
+    const keep = S.settings; S = fresh(); S.settings = keep; save(); go('parent'); toast('<span>Progress reset</span>'); };
+}
+
+/* ---------- boot ---------- */
+$('#hmSlot').innerHTML = hanamaru(30);
+$('#homeBtn').onclick = () => { sfx.tap(); go(up()); };
+$('#lockBtn').onclick = openGate;
+$('#soundWarn').onclick = soundHelp;
+go('home');
+/* offline: sw.js keeps a copy of the app (and its fonts) on the device after the first visit */
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});

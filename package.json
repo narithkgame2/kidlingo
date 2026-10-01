@@ -1,0 +1,13 @@
+{
+  "name": "kidlingo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "python3 scripts/build.py",
+    "audio": ".venv/bin/python scripts/generate_audio.py",
+    "test": "python3 scripts/build.py && node tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}
