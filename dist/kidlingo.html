@@ -326,6 +326,30 @@ summary{font-weight:900;cursor:pointer}
 .choices.wide .scn.l{font-size:clamp(26px,7.4vw,40px)}
 .choices.wide .emo.l{font-size:clamp(40px,11vw,64px)}
 
+/* ---------- beautify (2026-10) ---------- */
+#view{--tc:var(--sky)}
+/* free play: each in its own colour */
+.fp-words{background:color-mix(in srgb,var(--sun) 26%,var(--card));box-shadow:0 4px 0 color-mix(in srgb,var(--sun) 65%,var(--card))}
+.fp-talk{background:color-mix(in srgb,var(--leaf) 18%,var(--card));box-shadow:0 4px 0 color-mix(in srgb,var(--leaf) 55%,var(--card))}
+.fp-write{background:color-mix(in srgb,var(--sky) 16%,var(--card));box-shadow:0 4px 0 color-mix(in srgb,var(--sky) 50%,var(--card))}
+.fp-stick{background:color-mix(in srgb,var(--plum) 15%,var(--card));box-shadow:0 4px 0 color-mix(in srgb,var(--plum) 50%,var(--card))}
+/* scenery along the journey */
+.jdeco{position:absolute;transform:translate(-50%,-50%);font-size:clamp(26px,7vw,36px);line-height:1;z-index:1;pointer-events:none;opacity:.92;filter:drop-shadow(0 2px 0 rgba(255,255,255,.7))}
+.jband{box-shadow:inset 0 0 0 3px rgba(255,255,255,.55)}
+.jtrack .bed{stroke:#A88563}
+/* lesson progress: a train on a rail */
+.rail{position:relative;height:34px;margin:2px 26px 12px 4px}
+.rail-track{position:absolute;left:0;right:0;top:16px;height:10px;border-radius:6px;background:#DCE4EE;overflow:hidden;box-shadow:inset 0 2px 0 rgba(30,42,69,.08)}
+.rail-track i{display:block;height:100%;border-radius:6px;background:var(--tc);transition:width .5s ease}
+.rail-train{position:absolute;top:-2px;font-size:28px;line-height:1;transform:translateX(-50%);transition:left .5s ease}
+.rail-flag{position:absolute;right:-26px;top:2px;font-size:24px;line-height:1}
+/* topic colour on lesson cards */
+.learn-card,.talk-card,.scene{border-top:10px solid var(--tc);background:linear-gradient(color-mix(in srgb,var(--tc) 9%,var(--card)),var(--card) 45%)}
+.choice,.say-opt{box-shadow:0 5px 0 color-mix(in srgb,var(--tc) 35%,var(--line))}
+.mcard{background:color-mix(in srgb,var(--tc) 16%,var(--card))}
+.mcard .back .hm{color:color-mix(in srgb,var(--tc) 45%,var(--card))}
+.prompt-text{color:var(--ink)}
+
 </style>
 </head>
 <body>
@@ -445,14 +469,14 @@ const SPOKEN_EXTRA = ['おなじ ものを みつけよう','こんにちは','�
 /* The journey (home screen): an e-sugoroku train ride across Japan, Hokkaido to Okinawa. Each stop is one lesson:
    a topic id from THEMES/PHRASES, or a kana row to trace ('h0'..'h9' hiragana, 'k0'..'k9' katakana; row 9 = わをん). */
 const JOURNEY = [
-  {name:'ほっかいどう', icon:'🐻', bg:'#DCEBFA', stops:['aisatsu','animals','h0','food']},
-  {name:'とうきょう',   icon:'🗼', bg:'#F4E1EA', stops:['ie','h1','colors','h2','arigatou']},
-  {name:'ふじさん',     icon:'🗻', bg:'#DDEFE6', stops:['numbers','h3','kimochi','h4','body']},
-  {name:'きょうと',     icon:'⛩️', bg:'#FBE3DA', stops:['h5','hoshii','vehicles','h6','asobu']},
-  {name:'おおさか',     icon:'🏯', bg:'#FBF0D2', stops:['h7','shitsumon','h8','h9']},
-  {name:'ひろしま',     icon:'🍁', bg:'#FADFD8', stops:['k0','oyatsu','k1','k2','zoo']},
-  {name:'ふくおか',     icon:'🍜', bg:'#ECE3F6', stops:['k3','k4','mono','k5','k6']},
-  {name:'おきなわ',     icon:'🏝️', bg:'#D6F1F2', stops:['k7','suki','k8','k9']}
+  {name:'ほっかいどう', icon:'🐻', bg:'#DCEBFA', deco:['❄️','🌲','⛄','🦊'], stops:['aisatsu','animals','h0','food']},
+  {name:'とうきょう',   icon:'🗼', bg:'#F4E1EA', deco:['🌸','🏙️','🐦','🌸'], stops:['ie','h1','colors','h2','arigatou']},
+  {name:'ふじさん',     icon:'🗻', bg:'#DDEFE6', deco:['☁️','🌲','🍵','☁️'], stops:['numbers','h3','kimochi','h4','body']},
+  {name:'きょうと',     icon:'⛩️', bg:'#FBE3DA', deco:['🎋','🍡','🦌','🏮'], stops:['h5','hoshii','vehicles','h6','asobu']},
+  {name:'おおさか',     icon:'🏯', bg:'#FBF0D2', deco:['🐙','🎡','🍢'], stops:['h7','shitsumon','h8','h9']},
+  {name:'ひろしま',     icon:'🍁', bg:'#FADFD8', deco:['🍁','⛵','🍁','🦌'], stops:['k0','oyatsu','k1','k2','zoo']},
+  {name:'ふくおか',     icon:'🍜', bg:'#ECE3F6', deco:['🏮','🍓','🌊','🐟'], stops:['k3','k4','mono','k5','k6']},
+  {name:'おきなわ',     icon:'🏝️', bg:'#D6F1F2', deco:['🐠','🌺','🐢','🐬'], stops:['k7','suki','k8','k9']}
 ];
 const rowChars = id => { const rows = id[0] === 'h' ? KANA_ROWS : KATA_ROWS, r = +id.slice(1);
   return [...(r < 9 ? rows[r] : rows[9] + rows[10])].filter(c => c !== '・'); };
@@ -687,13 +711,13 @@ function pickTargets(words, n){
 function options(w){ return shuffle([w, ...shuffle(L.t.words.filter(x => x.k !== w.k)).slice(0,3)]); }
 
 /* ---------- screens ---------- */
-let current = 'home';
+let current = 'home', prevScreen = 'home';
 const listFor = t => t && t.kind === 'phrase' ? 'phrases' : 'themes';
 const up = () => current === 'trace' ? (RS ? 'home' : 'kana') : current === 'lesson' ? (L && L.from === 'home' ? 'home' : listFor(L && L.t)) : 'home';
 function go(name, arg){
   if(name !== 'trace') RS = null;
   stopRecorder();
-  current = name;
+  prevScreen = current; current = name;
   $('#homeBtn').style.visibility = name === 'home' ? 'hidden' : 'visible';
   ({home, themes:() => themes('word'), phrases:() => themes('phrase'), lesson, kana:kanaGrid, trace, stickers, parent})[name](arg);
   updateBar();
@@ -716,6 +740,7 @@ let ARRIVE = null;
 const XS = [50, 77, 50, 23];   // stops zig-zag across the board (percent of the width)
 
 function home(){
+  view.style.removeProperty('--tc');
   const nx = nextStop(), here = nx < 0 ? STOPS.length - 1 : nx;
   let y = 96, stops = '', bands = '', pts = [], pos = [];
   JOURNEY.forEach(g => {
@@ -729,7 +754,8 @@ function home(){
         ${done ? `<span class="sstars">${[1,2,3].map(k => `<i class="${k <= n ? 'on' : ''}">${hanamaru(17)}</i>`).join('')}</span>` : `<span class="sname kana">${stopName(id)}</span>`}</button>`;
       y += 108;
     });
-    bands += `<div class="jband" style="top:${top}px;height:${y - top - 30}px;--bg:${g.bg}"><span class="jregion"><span class="emo">${g.icon}</span><span>${g.name}</span>${g.stops.every(stopDone) ? hanamaru(22) : ''}</span></div>`;
+    const deco = (g.deco || []).map((e, k) => `<span class="jdeco" style="left:${k % 2 ? 91 : 9}%;top:${top + 70 + k * Math.max(60, (y - top - 140) / Math.max(1, g.deco.length - 1))}px">${e}</span>`).join('');
+    bands += `<div class="jband" style="top:${top}px;height:${y - top - 30}px;--bg:${g.bg}"><span class="jregion"><span class="emo">${g.icon}</span><span>${g.name}</span>${g.stops.every(stopDone) ? hanamaru(22) : ''}</span></div>${deco}`;
     y += 10;
   });
   const H = y + 70, cut = nx < 0 ? pts.length : nx + 1;
@@ -803,10 +829,12 @@ function lesson(id){
     pickTargets(t.words, 4).forEach(w => steps.push({type:'read', w}));
     steps.push({type:'match'}, {type:'talk'});
   }
-  L = {t, steps, i:0, earned:0, ok:0, n:0, from:current === 'lesson' && L ? L.from : current, was:stopDone(id)};
+  view.style.setProperty('--tc', `var(${t.hue})`);
+  L = {t, steps, i:0, earned:0, ok:0, n:0, from:prevScreen === 'lesson' && L ? L.from : prevScreen, was:stopDone(id)};
   markDay(); step();
 }
-const stepsBar = () => `<div class="steps" role="progressbar" aria-valuemin="1" aria-valuemax="${L.steps.length}" aria-valuenow="${L.i+1}">${L.steps.map((s,j) => `<i class="${j<L.i?'done':j===L.i?'now':''}"></i>`).join('')}</div>`;
+const stepsBar = () => { const pct = Math.round(L.i / L.steps.length * 100);
+  return `<div class="rail" role="progressbar" aria-valuemin="1" aria-valuemax="${L.steps.length}" aria-valuenow="${L.i+1}"><span class="rail-track"><i style="width:${pct}%"></i></span><span class="rail-train" style="left:${pct}%" aria-hidden="true">🚃</span><span class="rail-flag" aria-hidden="true">🏁</span></div>`; };
 const tally = ok => { if(!L) return; L.n++; if(ok) L.ok++; };
 const starsFor = (ok, n) => !n ? 3 : ok/n >= .85 ? 3 : ok/n >= .5 ? 2 : 1;
 function next(){ if(current !== 'lesson') return; L.i++; if(L.i >= L.steps.length) finish(); else step(); }
@@ -926,14 +954,14 @@ function stTalk(){
 
 function finish(){
   const t = L.t; S.themes[t.id] = (S.themes[t.id]||0) + 1;
-  finishScreen(t.id, starsFor(L.ok, L.n), L.earned, L.was, () => lesson(t.id));
+  finishScreen(t.id, starsFor(L.ok, L.n), L.earned, L.was, () => { prevScreen = 'lesson'; lesson(t.id); });
 }
 /* The end of any journey stop (a topic lesson or a kana row): hanko, 1-3 はなまる, then back to the map, where the
    train moves on if this stop was done for the first time. */
 function finishScreen(id, stars, earned, was, again){
   S.stars[id] = Math.max(S.stars[id] || 0, stars); save();
   const i = STOPS.findIndex(x => x.id === id);
-  if(!was && i >= 0) ARRIVE = {from:i};
+  if(!was && i >= 0 && STOPS.slice(0, i).every(x => stopDone(x.id))) ARRIVE = {from:i};
   h(`<div class="finish"><div class="stamp-wrap">${hanko()}</div>
     <div class="fstars">${[1,2,3].map(n => `<span class="${n <= stars ? 'on' : ''}" style="--d:${n*.18}s">${hanamaru(54)}</span>`).join('')}</div>
     <p class="earned">${hanamaru(30)}<span>+${earned}</span></p>

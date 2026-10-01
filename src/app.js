@@ -226,13 +226,13 @@ function pickTargets(words, n){
 function options(w){ return shuffle([w, ...shuffle(L.t.words.filter(x => x.k !== w.k)).slice(0,3)]); }
 
 /* ---------- screens ---------- */
-let current = 'home';
+let current = 'home', prevScreen = 'home';
 const listFor = t => t && t.kind === 'phrase' ? 'phrases' : 'themes';
 const up = () => current === 'trace' ? (RS ? 'home' : 'kana') : current === 'lesson' ? (L && L.from === 'home' ? 'home' : listFor(L && L.t)) : 'home';
 function go(name, arg){
   if(name !== 'trace') RS = null;
   stopRecorder();
-  current = name;
+  prevScreen = current; current = name;
   $('#homeBtn').style.visibility = name === 'home' ? 'hidden' : 'visible';
   ({home, themes:() => themes('word'), phrases:() => themes('phrase'), lesson, kana:kanaGrid, trace, stickers, parent})[name](arg);
   updateBar();
@@ -255,6 +255,7 @@ let ARRIVE = null;
 const XS = [50, 77, 50, 23];   // stops zig-zag across the board (percent of the width)
 
 function home(){
+  view.style.removeProperty('--tc');
   const nx = nextStop(), here = nx < 0 ? STOPS.length - 1 : nx;
   let y = 96, stops = '', bands = '', pts = [], pos = [];
   JOURNEY.forEach(g => {
@@ -268,7 +269,8 @@ function home(){
         ${done ? `<span class="sstars">${[1,2,3].map(k => `<i class="${k <= n ? 'on' : ''}">${hanamaru(17)}</i>`).join('')}</span>` : `<span class="sname kana">${stopName(id)}</span>`}</button>`;
       y += 108;
     });
-    bands += `<div class="jband" style="top:${top}px;height:${y - top - 30}px;--bg:${g.bg}"><span class="jregion"><span class="emo">${g.icon}</span><span>${g.name}</span>${g.stops.every(stopDone) ? hanamaru(22) : ''}</span></div>`;
+    const deco = (g.deco || []).map((e, k) => `<span class="jdeco" style="left:${k % 2 ? 91 : 9}%;top:${top + 70 + k * Math.max(60, (y - top - 140) / Math.max(1, g.deco.length - 1))}px">${e}</span>`).join('');
+    bands += `<div class="jband" style="top:${top}px;height:${y - top - 30}px;--bg:${g.bg}"><span class="jregion"><span class="emo">${g.icon}</span><span>${g.name}</span>${g.stops.every(stopDone) ? hanamaru(22) : ''}</span></div>${deco}`;
     y += 10;
   });
   const H = y + 70, cut = nx < 0 ? pts.length : nx + 1;
@@ -342,10 +344,12 @@ function lesson(id){
     pickTargets(t.words, 4).forEach(w => steps.push({type:'read', w}));
     steps.push({type:'match'}, {type:'talk'});
   }
-  L = {t, steps, i:0, earned:0, ok:0, n:0, from:current === 'lesson' && L ? L.from : current, was:stopDone(id)};
+  view.style.setProperty('--tc', `var(${t.hue})`);
+  L = {t, steps, i:0, earned:0, ok:0, n:0, from:prevScreen === 'lesson' && L ? L.from : prevScreen, was:stopDone(id)};
   markDay(); step();
 }
-const stepsBar = () => `<div class="steps" role="progressbar" aria-valuemin="1" aria-valuemax="${L.steps.length}" aria-valuenow="${L.i+1}">${L.steps.map((s,j) => `<i class="${j<L.i?'done':j===L.i?'now':''}"></i>`).join('')}</div>`;
+const stepsBar = () => { const pct = Math.round(L.i / L.steps.length * 100);
+  return `<div class="rail" role="progressbar" aria-valuemin="1" aria-valuemax="${L.steps.length}" aria-valuenow="${L.i+1}"><span class="rail-track"><i style="width:${pct}%"></i></span><span class="rail-train" style="left:${pct}%" aria-hidden="true">🚃</span><span class="rail-flag" aria-hidden="true">🏁</span></div>`; };
 const tally = ok => { if(!L) return; L.n++; if(ok) L.ok++; };
 const starsFor = (ok, n) => !n ? 3 : ok/n >= .85 ? 3 : ok/n >= .5 ? 2 : 1;
 function next(){ if(current !== 'lesson') return; L.i++; if(L.i >= L.steps.length) finish(); else step(); }
@@ -465,14 +469,14 @@ function stTalk(){
 
 function finish(){
   const t = L.t; S.themes[t.id] = (S.themes[t.id]||0) + 1;
-  finishScreen(t.id, starsFor(L.ok, L.n), L.earned, L.was, () => lesson(t.id));
+  finishScreen(t.id, starsFor(L.ok, L.n), L.earned, L.was, () => { prevScreen = 'lesson'; lesson(t.id); });
 }
 /* The end of any journey stop (a topic lesson or a kana row): hanko, 1-3 はなまる, then back to the map, where the
    train moves on if this stop was done for the first time. */
 function finishScreen(id, stars, earned, was, again){
   S.stars[id] = Math.max(S.stars[id] || 0, stars); save();
   const i = STOPS.findIndex(x => x.id === id);
-  if(!was && i >= 0) ARRIVE = {from:i};
+  if(!was && i >= 0 && STOPS.slice(0, i).every(x => stopDone(x.id))) ARRIVE = {from:i};
   h(`<div class="finish"><div class="stamp-wrap">${hanko()}</div>
     <div class="fstars">${[1,2,3].map(n => `<span class="${n <= stars ? 'on' : ''}" style="--d:${n*.18}s">${hanamaru(54)}</span>`).join('')}</div>
     <p class="earned">${hanamaru(30)}<span>+${earned}</span></p>

@@ -89,14 +89,14 @@ const SPOKEN_EXTRA = ['おなじ ものを みつけよう','こんにちは','�
 /* The journey (home screen): an e-sugoroku train ride across Japan, Hokkaido to Okinawa. Each stop is one lesson:
    a topic id from THEMES/PHRASES, or a kana row to trace ('h0'..'h9' hiragana, 'k0'..'k9' katakana; row 9 = わをん). */
 const JOURNEY = [
-  {name:'ほっかいどう', icon:'🐻', bg:'#DCEBFA', stops:['aisatsu','animals','h0','food']},
-  {name:'とうきょう',   icon:'🗼', bg:'#F4E1EA', stops:['ie','h1','colors','h2','arigatou']},
-  {name:'ふじさん',     icon:'🗻', bg:'#DDEFE6', stops:['numbers','h3','kimochi','h4','body']},
-  {name:'きょうと',     icon:'⛩️', bg:'#FBE3DA', stops:['h5','hoshii','vehicles','h6','asobu']},
-  {name:'おおさか',     icon:'🏯', bg:'#FBF0D2', stops:['h7','shitsumon','h8','h9']},
-  {name:'ひろしま',     icon:'🍁', bg:'#FADFD8', stops:['k0','oyatsu','k1','k2','zoo']},
-  {name:'ふくおか',     icon:'🍜', bg:'#ECE3F6', stops:['k3','k4','mono','k5','k6']},
-  {name:'おきなわ',     icon:'🏝️', bg:'#D6F1F2', stops:['k7','suki','k8','k9']}
+  {name:'ほっかいどう', icon:'🐻', bg:'#DCEBFA', deco:['❄️','🌲','⛄','🦊'], stops:['aisatsu','animals','h0','food']},
+  {name:'とうきょう',   icon:'🗼', bg:'#F4E1EA', deco:['🌸','🏙️','🐦','🌸'], stops:['ie','h1','colors','h2','arigatou']},
+  {name:'ふじさん',     icon:'🗻', bg:'#DDEFE6', deco:['☁️','🌲','🍵','☁️'], stops:['numbers','h3','kimochi','h4','body']},
+  {name:'きょうと',     icon:'⛩️', bg:'#FBE3DA', deco:['🎋','🍡','🦌','🏮'], stops:['h5','hoshii','vehicles','h6','asobu']},
+  {name:'おおさか',     icon:'🏯', bg:'#FBF0D2', deco:['🐙','🎡','🍢'], stops:['h7','shitsumon','h8','h9']},
+  {name:'ひろしま',     icon:'🍁', bg:'#FADFD8', deco:['🍁','⛵','🍁','🦌'], stops:['k0','oyatsu','k1','k2','zoo']},
+  {name:'ふくおか',     icon:'🍜', bg:'#ECE3F6', deco:['🏮','🍓','🌊','🐟'], stops:['k3','k4','mono','k5','k6']},
+  {name:'おきなわ',     icon:'🏝️', bg:'#D6F1F2', deco:['🐠','🌺','🐢','🐬'], stops:['k7','suki','k8','k9']}
 ];
 const rowChars = id => { const rows = id[0] === 'h' ? KANA_ROWS : KATA_ROWS, r = +id.slice(1);
   return [...(r < 9 ? rows[r] : rows[9] + rows[10])].filter(c => c !== '・'); };
