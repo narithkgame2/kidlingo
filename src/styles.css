@@ -401,3 +401,17 @@ body.wide .bar{max-width:none}
 .beat-opt b{font-size:30px;font-weight:900}
 .beat-opt.right{background:color-mix(in srgb,var(--leaf) 18%,var(--card));box-shadow:0 0 0 5px var(--leaf)}
 .beat-opt.wrong{opacity:.3}
+
+/* ---------- our family's voice (parent mode) ---------- */
+.parent h3.sub3{font-size:17px;font-weight:900;margin:18px 0 4px}
+.fam-add{display:grid;grid-template-columns:1fr;gap:8px;margin:8px 0 12px}
+@media (min-width:560px){.fam-add{grid-template-columns:2fr 1fr 2fr auto}}
+.fam-add input{font:inherit;font-size:17px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);min-width:0}
+.frow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.frow .emo{font-size:28px;width:40px;text-align:center}
+.ftext{flex:1;min-width:140px;display:flex;flex-direction:column}
+.ftext .kana{font-size:19px} .ftext small{color:var(--muted);font-size:13px}
+.fctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fok{color:var(--leaf);font-weight:700;font-size:13px}
+.small-btn.rec-on{background:var(--shu);color:#fff}
+.small-btn.quiet{color:var(--muted)}

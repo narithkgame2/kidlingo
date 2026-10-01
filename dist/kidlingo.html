@@ -419,6 +419,20 @@ body.wide .bar{max-width:none}
 .beat-opt.right{background:color-mix(in srgb,var(--leaf) 18%,var(--card));box-shadow:0 0 0 5px var(--leaf)}
 .beat-opt.wrong{opacity:.3}
 
+/* ---------- our family's voice (parent mode) ---------- */
+.parent h3.sub3{font-size:17px;font-weight:900;margin:18px 0 4px}
+.fam-add{display:grid;grid-template-columns:1fr;gap:8px;margin:8px 0 12px}
+@media (min-width:560px){.fam-add{grid-template-columns:2fr 1fr 2fr auto}}
+.fam-add input{font:inherit;font-size:17px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);min-width:0}
+.frow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.frow .emo{font-size:28px;width:40px;text-align:center}
+.ftext{flex:1;min-width:140px;display:flex;flex-direction:column}
+.ftext .kana{font-size:19px} .ftext small{color:var(--muted);font-size:13px}
+.fctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fok{color:var(--leaf);font-weight:700;font-size:13px}
+.small-btn.rec-on{background:var(--shu);color:#fff}
+.small-btn.quiet{color:var(--muted)}
+
 </style>
 </head>
 <body>
@@ -582,7 +596,7 @@ const STROKE_D = {"あ": ["M31.01,33c0.88,0.88,2.75,1.82,5.25,1.75c8.62-0.25,20-
 
 /* ---------- storage ---------- */
 const KEY = 'kidlingo.v1';
-const DEF_SET = {kana:true, rate:0.85, sfx:true, speed:1};
+const DEF_SET = {kana:true, rate:0.85, sfx:true, speed:1, family:true};
 const fresh = () => ({hana:0, days:[], words:{}, kana:{}, themes:{}, stickers:{}, stars:{}, settings:{...DEF_SET}});
 function load(){ try{ const r = JSON.parse(localStorage.getItem(KEY)); if(r){ const st = Object.assign({...DEF_SET}, r.settings||{}); if(st.slow){ st.speed = 0; delete st.slow; } return Object.assign(fresh(), r, {settings:st}); } }catch(e){} return fresh(); }
 let S = load();
@@ -640,10 +654,11 @@ let qTok = 0;
 const rateFor = () => S.settings.speed === 2 ? 1.15 : 1;
 const clipKey = t => S.settings.speed === 0 && CLIPS['slow:' + t] ? 'slow:' + t : t;
 let lastSaid = null;
+const srcOf = t => (famOn() && FAM[t]) || CLIPS[clipKey(t)];
 function say(text, rate){
   const parts = [].concat(text), r = rate || S.settings.rate;
   lastSaid = parts[parts.length - 1];
-  if(parts.every(p => CLIPS[p])) return playClips(parts.map(clipKey), r);
+  if(parts.every(p => srcOf(p))) return playClips(parts.map(srcOf), r);
   return ttsSay(parts, r);
 }
 /* Audio that starts by itself waits a moment after the screen appears (LEAD), and there is a short pause between
@@ -656,7 +671,7 @@ function playClips(parts, r){
   const step = () => {
     if(tok !== qTok || i >= parts.length) return;
     const t = parts[i++];
-    player.src = CLIPS[t];        // a file URL (web app) or a data: URL (single-file copy)
+    player.src = t;               // a clip file, a data: URL (single-file copy) or a family recording (blob:)
     player.defaultPlaybackRate = player.playbackRate = rateFor(r);
     player.muted = false; player.volume = 1;
     player.onended = () => setTimeout(step, GAP);
@@ -673,7 +688,7 @@ function webAudioClips(parts, r, tok){
     let i = 0;
     const step = () => {
       if(tok !== qTok || i >= parts.length) return;
-      fetch(CLIPS[parts[i++]]).then(r => r.arrayBuffer()).then(buf => ac.decodeAudioData(buf, ab => {
+      fetch(parts[i++]).then(r => r.arrayBuffer()).then(buf => ac.decodeAudioData(buf, ab => {
         const src = ac.createBufferSource(); src.buffer = ab; src.playbackRate.value = rateFor(r);
         src.connect(ac.destination); src.onended = () => setTimeout(step, GAP); src.start(); clearSoundIssue();
       }, e => soundIssue('decode: ' + (e && e.message || e)))).catch(e => soundIssue('fetch: ' + (e && e.message || e)));
@@ -807,7 +822,7 @@ function bindGo(){ view.querySelectorAll('[data-go]').forEach(b => b.onclick = (
 function pickTargets(words, n){
   const ranked = words.map(w => { const s = S.words[w.k]; const weight = s ? (s.streak >= 2 ? 1 : 3 + s.miss) : 2.5; return {w, key:Math.random()*weight}; })
     .sort((a,b) => b.key - a.key).map(x => x.w);
-  const out = []; while(out.length < n) out.push(...ranked.slice(0, n - out.length)); return out;
+  const out = []; if(!ranked.length) return out; while(out.length < n) out.push(...ranked.slice(0, n - out.length)); return out;
 }
 function options(w){ return shuffle([w, ...shuffle(L.t.words.filter(x => x.k !== w.k)).slice(0,3)]); }
 
@@ -908,7 +923,7 @@ function home(){
 }
 
 function themes(kind){
-  const list = kind === 'phrase' ? PHRASES : [...THEMES, ...SOUNDS];
+  const list = kind === 'phrase' ? [...PHRASES, ...(famReady() ? [famTopic()] : [])] : [...THEMES, ...SOUNDS];
   h(`<h1 class="screen-title">${kind === 'phrase' ? 'おはなし' : 'ことば'}</h1><div class="theme-grid">${list.map(t => `
     <button class="theme-card" data-go="lesson" data-arg="${t.id}" aria-label="${t.name}" style="--tc:var(${t.hue})">
       <span class="emo m">${t.icon}</span><span class="theme-name">${t.name}</span>${t.kata ? '<span class="kata-badge kana">カタカナ</span>' : ''}
@@ -919,7 +934,8 @@ function themes(kind){
 }
 
 function lesson(id){
-  const t = ALL.find(x => x.id === id);
+  const t = id === 'family' ? famTopic() : ALL.find(x => x.id === id);
+  if(!t || t.words.length < (t.kind === 'phrase' ? 4 : 2)){ go(prevScreen === 'lesson' ? 'home' : prevScreen || 'home'); return; }
   const steps = [{type:'learn'}];
   if(t.kind === 'phrase'){
     pickTargets(t.words, 4).forEach(w => steps.push({type:'say', w}));
@@ -1259,6 +1275,45 @@ function stickers(){
   say('シール');
 }
 
+/* ---------- our family's voice ----------
+   Grown-ups can record any phrase or word in their own voice, and add their family's own phrases. A take is trimmed
+   to the speech (with a little air), evened out to the app's loudness, saved as a small WAV on this device
+   (IndexedDB "kidlingo", store "voices", key = the Japanese text) and played instead of the app voice while
+   "Use our recordings" is on. Recordings travel in the progress file. Family phrases with a recording form the
+   うちの ことば lesson (in おはなし) once there are 4. */
+const FAM = {};                                          // text -> blob URL of the family's recording
+const famOn = () => S.settings.family !== false;
+const VDB = { db:null,
+  open(){ return this.db || (this.db = new Promise((res, rej) => { const r = indexedDB.open('kidlingo', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('voices'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
+  async run(mode, fn){ const db = await this.open(); return new Promise(res => { const q = fn(db.transaction('voices', mode).objectStore('voices')); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); },
+  get(k){ return this.run('readonly', st => st.get(k)); }, set(k, v){ return this.run('readwrite', st => st.put(v, k)); },
+  del(k){ return this.run('readwrite', st => st.delete(k)); }, keys(){ return this.run('readonly', st => st.getAllKeys()); } };
+async function loadFamily(){ try{ for(const k of (await VDB.keys()) || []){ const b = await VDB.get(k); if(b){ if(FAM[k]) URL.revokeObjectURL(FAM[k]); FAM[k] = URL.createObjectURL(b); } } }catch(e){} }
+async function tidyTake(blob){
+  const AC = window.AudioContext || window.webkitAudioContext, c = new AC();
+  try{
+    const raw = await blob.arrayBuffer(), buf = await new Promise((res, rej) => c.decodeAudioData(raw, res, rej));
+    const sr = buf.sampleRate, x = buf.getChannelData(0), fr = Math.max(1, Math.round(sr * .02)), n = Math.floor(x.length / fr), rms = [];
+    for(let f = 0; f < n; f++){ let q = 0; for(let i = f*fr; i < (f+1)*fr; i++) q += x[i]*x[i]; rms.push(Math.sqrt(q / fr)); }
+    let top = 0; for(const v of rms) if(v > top) top = v;
+    if(top < .01) return null;                                       // nothing heard
+    const thr = top * .12; let a = rms.findIndex(v => v > thr), b = n - 1; while(b > a && rms[b] <= thr) b--;
+    const from = Math.max(0, (a - 8) * fr), to = Math.min(x.length, (b + 12) * fr), seg = x.subarray(from, to);
+    let pk = 0, ss = 0, nv = 0; for(const v of seg){ const m = Math.abs(v); if(m > pk) pk = m; if(m > .01){ ss += v*v; nv++; } }
+    const gain = Math.min(.08 / Math.sqrt(ss / Math.max(1, nv)), .9 / Math.max(pk, 1e-6));
+    const out = new DataView(new ArrayBuffer(44 + seg.length * 2)), W = (o, t) => { for(let i = 0; i < t.length; i++) out.setUint8(o + i, t.charCodeAt(i)); };
+    W(0, 'RIFF'); out.setUint32(4, 36 + seg.length * 2, true); W(8, 'WAVE'); W(12, 'fmt '); out.setUint32(16, 16, true); out.setUint16(20, 1, true);
+    out.setUint16(22, 1, true); out.setUint32(24, sr, true); out.setUint32(28, sr * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+    W(36, 'data'); out.setUint32(40, seg.length * 2, true);
+    for(let i = 0; i < seg.length; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, seg[i] * gain)) * 32767, true);
+    return new Blob([out], {type:'audio/wav'});
+  } finally { try{ c.close(); }catch(e){} }
+}
+const famWords = () => (S.family || []).filter(f => FAM[f.k]).map(f => ({k:f.k, p:f.p || '🏡', en:f.en || '', t:'family', phrase:true}));
+const famTopic = () => ({id:'family', kind:'phrase', name:'うちの ことば', icon:'🏡', hue:'--leaf', words:famWords()});
+const famReady = () => famWords().length >= 4;
+
 /* ---------- hear yourself ----------
    In phrase practice the child can record their try (up to 6 s) and hear it right away, then the model again. */
 const MIC = '<span class="emo">🎤</span>', EAR = '<span class="emo">👂</span>';
@@ -1285,6 +1340,50 @@ function bindRecorder(mic, me){ let url = null; const out = new Audio();
 }
 
 /* ---------- grown-ups ---------- */
+const famRow = (k, p, en, own) => `<div class="frow" data-k="${k}" data-own="${own ? 1 : ''}"><span class="emo">${p || '💬'}</span><span class="ftext"><span class="kana">${k}</span><small>${en || ''}</small></span>
+  <span class="fctl">${FAM[k] ? '<span class="fok">✓ your voice</span><button class="small-btn" data-fa="play" aria-label="Play your recording">▶</button>' : ''}<button class="small-btn" data-fa="rec">${FAM[k] ? '🎤 Again' : '🎤 Record'}</button>${FAM[k] ? '<button class="small-btn danger" data-fa="del" aria-label="Delete the recording">✕</button>' : ''}${own ? '<button class="small-btn quiet" data-fa="remove">Remove</button>' : ''}</span></div>`;
+let FREC = null;
+function bindFamily(){
+  const addBtn = $('#faAdd');
+  addBtn.onclick = () => { const k = $('#faK').value.trim().replace(/\s+/g, ' '), p = $('#faP').value.trim(), en = $('#faE').value.trim();
+    if(!k){ $('#faK').focus(); return; }
+    S.family = S.family || []; if(S.family.some(f => f.k === k)){ toast('<span>Already in the list</span>'); return; }
+    S.family.push({k, p, en}); save(); $('#faK').value = $('#faP').value = $('#faE').value = '';
+    const list = $('#famList'); if(!list.querySelector('.frow')) list.innerHTML = '';
+    list.insertAdjacentHTML('beforeend', famRow(k, p, en, true)); bindRow(list.lastElementChild); toast('<span>Added. Now record it 🎤</span>'); };
+  view.querySelectorAll('.frow').forEach(bindRow);
+}
+function bindRow(row){
+  const k = row.dataset.k, own = !!row.dataset.own, again = () => { const n = document.createElement('div');
+    const f = (S.family || []).find(x => x.k === k), w = PHRASES.flatMap(t => t.words).find(x => x.k === k);
+    n.innerHTML = famRow(k, f ? f.p : w && typeof w.p === 'string' ? w.p : '💬', f ? f.en : w ? w.en : '', own); const nr = n.firstChild; row.replaceWith(nr); bindRow(nr); };
+  row.querySelectorAll('[data-fa]').forEach(b => b.onclick = async () => {
+    const a = b.dataset.fa;
+    if(a === 'play'){ const u = FAM[k]; if(u){ try{ player.pause(); }catch(e){} player.src = u; player.play().catch(() => {}); } return; }
+    if(a === 'del'){ await VDB.del(k); if(FAM[k]) URL.revokeObjectURL(FAM[k]); delete FAM[k]; return again(); }
+    if(a === 'remove'){ S.family = (S.family || []).filter(f => f.k !== k); save(); await VDB.del(k); delete FAM[k]; row.remove(); return; }
+    if(a === 'rec'){
+      if(FREC){ FREC.stop(); return; }
+      if(!canRecord()){ toast('<span>Recording needs the https link</span>'); return; }
+      let stream; try{ stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true, noiseSuppression:true}}); }catch(e){ toast('<span>Microphone not allowed</span>'); return; }
+      const chunks = [], mr = new MediaRecorder(stream), t = setTimeout(() => mr.state !== 'inactive' && mr.stop(), 8000);
+      FREC = mr; b.textContent = '■ Stop'; b.classList.add('rec-on');
+      mr.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+      mr.onstop = async () => { clearTimeout(t); stream.getTracks().forEach(x => x.stop()); FREC = null;
+        const wav = chunks.length ? await tidyTake(new Blob(chunks, {type:mr.mimeType || 'audio/mp4'})).catch(() => null) : null;
+        if(!wav){ toast('<span>No voice heard. Try again, a little closer.</span>'); return again(); }
+        await VDB.set(k, wav); if(FAM[k]) URL.revokeObjectURL(FAM[k]); FAM[k] = URL.createObjectURL(wav);
+        again(); try{ player.pause(); }catch(e){} player.src = FAM[k]; player.play().catch(() => {}); };
+      mr.start();
+    }
+  });
+}
+/* recordings for the progress file, read ahead so "Save" can open the share sheet straight from the tap */
+let BKV = {};
+async function prepBackupVoices(){ const out = {};
+  try{ for(const k of (await VDB.keys()) || []){ const b = await VDB.get(k); if(b) out[k] = await new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }); } }catch(e){}
+  BKV = out; }
+
 function modal(html){ const o = document.createElement('div'); o.className = 'overlay'; o.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`; document.body.appendChild(o); return o; }
 function openGate(){
   const a = 11 + Math.floor(Math.random()*9), b = 3 + Math.floor(Math.random()*4);
@@ -1321,13 +1420,23 @@ function parent(){
     <h2>Word topics</h2>
     ${THEMES.map(topicRow).join('')}
     <h2>Phrase topics</h2>
-    ${PHRASES.map(topicRow).join('')}
+    ${PHRASES.map(topicRow).join('')}${famWords().length ? topicRow(famTopic()) : ''}
     <h2>Sound topics (long sounds ー and small っ)</h2>
     ${SOUNDS.map(topicRow).join('')}
 
     <h2>Needs practice</h2>
     ${weak.length ? `<div class="chips">${weak.map(w => `<button class="chip kana" data-say="${w.k}">${w.k} <small>✕${S.words[w.k].miss}</small></button>`).join('')}</div><p class="note">Tap a word to hear it. Try using these at home this week.</p>`
       : `<p class="empty">Nothing yet. Words show up here after your child misses them in a game.</p>`}
+
+    <h2>Our family's voice</h2>
+    <p class="note">Record phrases in your own voice: your child then hears you instead of the app voice. Recordings stay on this device and travel in the progress file.</p>
+    ${canRecord() ? '' : '<p class="empty">Recording needs the app opened from its https link (not a file on this computer).</p>'}
+    <div class="set"><label for="setFam">Use our recordings</label><input type="checkbox" id="setFam" ${famOn()?'checked':''}></div>
+    <h3 class="sub3">Our own phrases</h3>
+    <p class="note">Add phrases your family really uses, then record each one. With 4 recorded, a うちの ことば 🏡 lesson appears in おはなし${famReady() ? ' (it is there now)' : ''}.</p>
+    <div class="fam-add"><input id="faK" placeholder="Japanese, e.g. おかえりなさい" autocomplete="off"><input id="faP" placeholder="Picture: emoji 🏡" maxlength="8" autocomplete="off"><input id="faE" placeholder="Meaning in English" autocomplete="off"><button class="small-btn" id="faAdd">Add</button></div>
+    <div class="fam-list" id="famList">${(S.family||[]).map(f => famRow(f.k, f.p, f.en, true)).join('') || '<p class="empty">No family phrases yet.</p>'}</div>
+    <details><summary>Record the app's phrases in your voice</summary>${PHRASES.flatMap(t => t.words).map(w => famRow(w.k, typeof w.p === 'string' ? w.p : '💬', w.en, false)).join('')}</details>
 
     <h2>Word and phrase list</h2>
     <p class="note">Everything in the app with romaji and meaning, for any grown-up helping out. Your child sees only Japanese, pictures, and the meaning when they tap ? on a learning card.</p>
@@ -1349,18 +1458,22 @@ function parent(){
   </div>`);
   view.querySelectorAll('[data-say]').forEach(b => b.onclick = () => say(b.dataset.say));
   $('#setKana').onchange = e => { S.settings.kana = e.target.checked; save(); };
+  $('#setFam').onchange = e => { S.settings.family = e.target.checked; save(); };
+  bindFamily(); prepBackupVoices();
   $('#setSfx').onchange = e => { S.settings.sfx = e.target.checked; save(); sfx.ok(); };
   $('#testV').onclick = () => say('こんにちは！ いっしょに にほんごを べんきょう しましょう。');
   /* backup: progress is per device, so a file moves it (share sheet on iPhone/iPad, a download elsewhere) */
   const dl = f => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); };
-  $('#bkSave').onclick = () => { const f = new File([JSON.stringify({app:'kidlingo', v:1, at:new Date().toISOString(), state:S})], `kidlingo-progress-${fmt(new Date())}.json`, {type:'application/json'});
+  $('#bkSave').onclick = () => { const f = new File([JSON.stringify({app:'kidlingo', v:1, at:new Date().toISOString(), state:S, voices:BKV})], `kidlingo-progress-${fmt(new Date())}.json`, {type:'application/json'});
     if(navigator.canShare && navigator.canShare({files:[f]})) navigator.share({files:[f], title:'Kidlingo progress'}).catch(e => { if(!e || e.name !== 'AbortError') dl(f); }); else dl(f); };
   $('#bkLoad').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if(!f) return; let d = null; try{ d = JSON.parse(await f.text()); }catch(_){}
     if(!d || d.app !== 'kidlingo' || !d.state){ toast('<span>That isn’t a Kidlingo progress file</span>'); return; }
     const when = new Date(d.at).toLocaleDateString(undefined, {day:'numeric', month:'short', year:'numeric'});
     const o = modal(`<h2>Load progress?</h2><p>This replaces the progress on this device with the file from ${when}.</p><div class="row"><button class="btn" id="bkNo">Cancel</button><button class="btn primary" id="bkYes">Load</button></div>`);
     o.querySelector('#bkNo').onclick = () => o.remove();
-    o.querySelector('#bkYes').onclick = () => { o.remove(); S = Object.assign(fresh(), d.state, {settings:Object.assign({...DEF_SET}, d.state.settings||{})}); save(); go('parent'); toast('<span>Progress loaded</span>'); }; };
+    o.querySelector('#bkYes').onclick = async () => { o.remove(); S = Object.assign(fresh(), d.state, {settings:Object.assign({...DEF_SET}, d.state.settings||{})}); save();
+      for(const [k, u] of Object.entries(d.voices || {})){ try{ await VDB.set(k, await (await fetch(u)).blob()); }catch(e){} }
+      await loadFamily(); go('parent'); toast('<span>Progress loaded</span>'); }; };
   $('#soundInfo') && ($('#soundInfo').onclick = soundHelp);
   let armed = false;
   $('#reset').onclick = e => { const b = e.currentTarget;
@@ -1369,6 +1482,7 @@ function parent(){
 }
 
 /* ---------- boot ---------- */
+loadFamily();
 $('#hmSlot').innerHTML = hanamaru(30);
 $('#homeBtn').onclick = () => { sfx.tap(); go(up()); };
 $('#lockBtn').onclick = openGate;

@@ -49,6 +49,12 @@ and stops the engine itself. Kokoro (`--engine kokoro`) remains as a fallback.
   いってらっしゃい, ただいま, おかえり, ありがとう, どういたしまして, どうぞ, ごめんなさい, いいよ).
 - **Stars**: lessons from first tries (`tally`; ≥85% 3, ≥50% 2, else 1); kana rows from failed checks (0 = 3, ≤2 = 2).
   Best kept. Stops finished before stars existed show 3.
+- **Our family's voice** (parent mode): record any phrase (or the family's own phrases, `S.family = [{k, p, en}]`) in
+  your own voice. `tidyTake` trims to the speech, evens loudness, saves a WAV in IndexedDB `kidlingo`/`voices` (key =
+  text); `FAM[text]` = blob URL and `srcOf()` prefers it over the app clip while `S.settings.family` is on. Family
+  phrases with a recording form うちの ことば 🏡 (`famTopic()`, id `family`) in おはなし once there are 4 (`famReady`).
+  Recordings go into the progress file (`voices`, data URLs read ahead by `prepBackupVoices` so Save can share at once).
+  Lessons need ≥4 words (phrases) / ≥2 (others): `lesson()` refuses fewer, `pickTargets` never loops on an empty list.
 - **Sound lessons** (`SOUNDS`, kind `sound`): のばす おと (long sounds ー, おかあさん, ひこうき) and ちいさい っ, journey stops
   26 and 32. Each word lists wrong spellings a child might hear (`alt`). Steps: learn (long sounds in red, one dot per
   beat, coach "てを たたいて かぞえましょう") → 5× "ただしい ほうは どれですか？" (pick the spelling) → 3× "いくつ たたきますか？"
